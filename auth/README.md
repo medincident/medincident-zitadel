@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+https://zitadel.com/docs/guides/migrate/sources/zitadel
+To export zitadel execute that command: 
+docker compose exec -T custom-ui bun -e '
+  fetch("http://zitadel-api:8080/admin/v1/export", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer <IAMOWNER_SERVICE_USER_TOKEN>",
+      "Content-Type": "application/json",
+      "Host": "<ZITADEL_HOST>"
+    },
+    body: JSON.stringify({withPasswords: true, withOtp: true, timeout: "10m"})
+  }).then(r => r.text()).then(console.log)
+' > zitadel_export.json
