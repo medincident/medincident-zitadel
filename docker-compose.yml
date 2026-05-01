@@ -1,5 +1,21 @@
 name: zitadel
 
+x-zitadel-traefik-labels: &zitadel-traefik-labels
+  traefik.enable: true
+  traefik.docker.network: zitadel
+  traefik.http.services.custom-ui.loadbalancer.server.port: 3000
+
+  traefik.http.routers.custom-ui-web.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
+  traefik.http.routers.custom-ui-web.entrypoints: web
+  traefik.http.routers.custom-ui-web.service: custom-ui
+  traefik.http.routers.custom-ui-web.priority: 1000
+
+  traefik.http.routers.custom-ui-websecure.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
+  traefik.http.routers.custom-ui-websecure.entrypoints: websecure
+  traefik.http.routers.custom-ui-websecure.tls: true
+  traefik.http.routers.custom-ui-websecure.service: custom-ui
+  traefik.http.routers.custom-ui-websecure.priority: 1000
+
 services:
   proxy:
     image: ${TRAEFIK_IMAGE}
@@ -190,12 +206,12 @@ services:
         max-size: "25m"
         max-file: "3"
 
-  # === DEV: next dev + hot reload, монтирование исходников ===
+  # === DEV: авто-перезагрузка при изменениях ===
   custom-ui-dev:
     profiles: [ dev ]
     build:
       context: ./auth
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     env_file: .env
     environment:
@@ -215,32 +231,22 @@ services:
     networks:
       - zitadel
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=zitadel"
-      - "traefik.http.services.custom-ui-dev.loadbalancer.server.port=3000"
-
-      - traefik.http.routers.custom-ui-web.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
-      - traefik.http.routers.custom-ui-web.entrypoints=web
-      - traefik.http.routers.custom-ui-web.service=custom-ui-dev
-      - traefik.http.routers.custom-ui-web.priority=1000
-
-      - traefik.http.routers.custom-ui-websecure.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
-      - traefik.http.routers.custom-ui-websecure.entrypoints=websecure
-      - traefik.http.routers.custom-ui-websecure.tls=true
-      - traefik.http.routers.custom-ui-websecure.service=custom-ui-dev
-      - traefik.http.routers.custom-ui-websecure.priority=1000
+      <<: *zitadel-traefik-labels
     logging:
       driver: "json-file"
       options:
         max-size: "25m"
         max-file: "3"
 
-  # === PROD: образ собирается в CI (GitHub Actions) и пушится в GHCR.
+  # === PROD: образ собирается в GitHub Actions и пушится в GHCR.
   # Watchtower следит за обновлением тега :latest и перезапускает контейнер.
   custom-ui:
     profiles: [ prod ]
     image: ${CUSTOM_UI_IMAGE}
     restart: unless-stopped
+    build:
+      context: ./auth
+      dockerfile: Dockerfile.prod
     env_file: .env
     healthcheck:
       test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1" ]
@@ -253,20 +259,7 @@ services:
     networks:
       - zitadel
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=zitadel"
-      - "traefik.http.services.custom-ui.loadbalancer.server.port=3000"
-
-      - traefik.http.routers.custom-ui-web.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
-      - traefik.http.routers.custom-ui-web.entrypoints=web
-      - traefik.http.routers.custom-ui-web.service=custom-ui
-      - traefik.http.routers.custom-ui-web.priority=1000
-
-      - traefik.http.routers.custom-ui-websecure.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
-      - traefik.http.routers.custom-ui-websecure.entrypoints=websecure
-      - traefik.http.routers.custom-ui-websecure.tls=true
-      - traefik.http.routers.custom-ui-websecure.service=custom-ui
-      - traefik.http.routers.custom-ui-websecure.priority=1000
+      <<: *zitadel-traefik-labels
     logging:
       driver: "json-file"
       options:
