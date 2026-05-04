@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 
+const noopSubscribe = () => () => {};
+
 export function useCssVar(name: string): string {
-  const { resolvedTheme } = useTheme();
-  const [value, setValue] = useState("");
-
-  useEffect(() => {
-    const resolved = getComputedStyle(document.documentElement)
-      .getPropertyValue(name)
-      .trim();
-    setValue(resolved);
-  }, [name, resolvedTheme]);
-
-  return value;
+  // Re-read on theme switch: parent re-renders → useSyncExternalStore polls getSnapshot.
+  useTheme();
+  const getSnapshot = () =>
+    typeof document === "undefined"
+      ? ""
+      : getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return useSyncExternalStore(noopSubscribe, getSnapshot, () => "");
 }

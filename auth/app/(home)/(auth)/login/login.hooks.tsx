@@ -71,10 +71,7 @@ export function useQrStatus(enabled: boolean) {
   const [status, setStatus] = useState<QrStatus>("pending");
 
   useEffect(() => {
-    if (!enabled) {
-      setStatus("pending");
-      return;
-    }
+    if (!enabled) return;
 
     // SSE — одно соединение. Сервер читает deviceCode из HttpOnly cookie.
     const es = new EventSource(`/api/auth/qr/status`, { withCredentials: true });
@@ -94,10 +91,13 @@ export function useQrStatus(enabled: boolean) {
       fetchQrStatus().then((data) => setStatus(data.status));
     };
 
-    return () => es.close();
+    return () => {
+      es.close();
+      setStatus("pending");
+    };
   }, [enabled]);
 
-  return { status };
+  return { status: enabled ? status : "pending" };
 }
 
 export async function logoutClient() {

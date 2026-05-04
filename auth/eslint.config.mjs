@@ -12,7 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Auto-generated protobuf bindings — not authored.
+    "lib/generated/**",
   ]),
+  {
+    rules: {
+      // External glue (axios/grpc/jose/NextAuth callbacks) is loosely typed.
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

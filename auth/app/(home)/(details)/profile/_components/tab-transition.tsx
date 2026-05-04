@@ -1,20 +1,18 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/shared/lib/utils";
 
 let isInitialLoad = true;
 
 export function TabTransition({ children }: { children: React.ReactNode }) {
-  const [shouldAnimate, setShouldAnimate] = useState(false);
-
-  useLayoutEffect(() => {
+  const [shouldAnimate] = useState(() => {
     if (isInitialLoad) {
       isInitialLoad = false;
-      return;
+      return false;
     }
-      setShouldAnimate(true);
-  }, []);
+    return true;
+  });
 
   return (
     <div

@@ -13,7 +13,12 @@ export function AuthErrorView() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const retried = useRef(false);
-  const [showError, setShowError] = useState(false);
+  const [showError] = useState(() => {
+    if (typeof sessionStorage === "undefined") return false;
+    let count = 0;
+    try { count = Number(sessionStorage.getItem(RETRY_COUNT_KEY) || "0"); } catch {}
+    return count >= MAX_AUTO_RETRIES;
+  });
 
   useEffect(() => {
     if (retried.current) return;
@@ -24,7 +29,6 @@ export function AuthErrorView() {
 
     if (count >= MAX_AUTO_RETRIES) {
       console.error("[auth:error] Превышен лимит автоматических попыток (%d). Ошибка: %s", count, error);
-      setShowError(true);
       return;
     }
 

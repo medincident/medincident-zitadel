@@ -129,7 +129,7 @@ export async function createSessionWithPassword(
   loginName: string,
   password: string
 ): Promise<Result<z.infer<typeof ZitadelCreateSessionResponseSchema>>> {
-    let useragent = await getRequestUserAgent();
+  const useragent = await getRequestUserAgent();
   return handleZitadelRequest(
     () => zitadelApi.post("/v2/sessions", {
       checks: {
@@ -149,7 +149,7 @@ export const ZitadelGetSessionResponseSchema = z.object({
 export async function createSessionByUserId(
   userId: string
 ): Promise<Result<z.infer<typeof ZitadelCreateSessionResponseSchema>>> {
-  let useragent = await getRequestUserAgent();
+  const useragent = await getRequestUserAgent();
   return handleZitadelRequest(
     () => zitadelApi.post("/v2/sessions", {
       checks: { user: { userId } },

@@ -131,11 +131,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (token) {
-        // @ts-ignore - прокидываем токены и ошибки в клиентскую сессию
+        // @ts-expect-error - прокидываем токены и ошибки в клиентскую сессию
         session.accessToken = token.accessToken;
-        // @ts-ignore - Zitadel userId (числовой) для API вызовов
+        // @ts-expect-error - Zitadel userId (числовой) для API вызовов
         session.zitadelUserId = token.zitadelUserId;
-        // @ts-ignore
+        // @ts-expect-error - прокидываем ошибку обновления токена в клиентскую сессию
         session.error = token.error;
       }
       return session;
