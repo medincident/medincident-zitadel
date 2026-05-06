@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment, useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -26,6 +27,9 @@ function nextTheme(current: string | undefined): ThemeValue {
 
 export function ThemeToggle({ variant = 'segmented', className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   if (variant === 'icon') {
     const current = THEMES.find((t) => t.value === theme) ?? THEMES[0];
@@ -44,24 +48,28 @@ export function ThemeToggle({ variant = 'segmented', className }: ThemeTogglePro
   }
 
   return (
-    <div className={cn('grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted p-1', className)}>
-      {THEMES.map(({ value, label, icon: Icon }) => {
-        const isActive = theme === value;
+    <div className={cn('flex rounded-xl border border-border bg-muted p-1', className)}>
+      {THEMES.map(({ value, label, icon: Icon }, idx) => {
+        const isActive = mounted && theme === value;
         return (
-          <button
-            key={value}
-            onClick={() => setTheme(value)}
-            title={label}
-            className={cn(
-              'flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-200',
-              isActive
-                ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+          <Fragment key={value}>
+            {idx > 0 && (
+              <div className="my-2 w-px self-stretch bg-border" aria-hidden />
             )}
-          >
-            <Icon className="size-4 shrink-0" />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
+            <button
+              onClick={() => setTheme(value)}
+              title={label}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-200',
+                isActive
+                  ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              <span className="inline">{label}</span>
+            </button>
+          </Fragment>
         );
       })}
     </div>
