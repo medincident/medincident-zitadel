@@ -9,7 +9,6 @@ import { getUserById } from "@/services/zitadel/api";
 import { auth } from "@/services/zitadel/user/auth";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
 import { AutoSignIn } from "../../(auth)/login/_components/auto-sign-in";
-import { Skeleton } from "@/shared/ui/skeleton";
 
 async function EmailGuardedContent({ children }: { children: React.ReactNode }) {
   const userId = await getUserIdFromNextAuth();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -17,6 +18,7 @@ interface AccountSelectionContainerProps {
 }
 
 export function AccountSelectionContainer({ requestId }: AccountSelectionContainerProps) {
+  const router = useRouter();
   const [accounts, setAccounts] = useState<AccountDisplayItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -86,7 +88,7 @@ export function AccountSelectionContainer({ requestId }: AccountSelectionContain
   };
 
   const handleAddAccount = () => {
-    startZitadelSignIn("login");
+    router.push(`/login?requestId=${requestId}&account=new`);
   };
 
   // Загрузка

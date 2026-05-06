@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
@@ -25,21 +27,18 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
   const resolvedSearchParams = await searchParams;
 
   const requestId = resolvedSearchParams.requestId || resolvedSearchParams.authRequest;
+  const isAddNew = resolvedSearchParams.account === "new";
 
   if (!requestId) {
     redirect("/profile");
   }
 
-  // Проверяем auth request у Zitadel — содержит ли prompt
+  // Проверяем auth request у Zitadel — содержит ли prompt=select_account
   // Zitadel не прокидывает prompt в redirect URL, но хранит его в auth request
-  let forceLogin = false;
   let forceSelectAccount = false;
   const authReqResult = await getAuthRequest(requestId);
   if (authReqResult.success) {
     const prompts = authReqResult.data.authRequest?.prompt || [];
-    forceLogin = prompts.some((p: string) =>
-      p === "PROMPT_LOGIN" || p === "login"
-    );
     forceSelectAccount = prompts.some((p: string) =>
       p === "PROMPT_SELECT_ACCOUNT" || p === "select_account"
     );
@@ -50,13 +49,17 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
     redirect(`/?requestId=${requestId}`);
   }
 
+  // Сверяем cookies с Zitadel — отсеиваем протухшие/удалённые сессии
+  const synced = await syncSessionCookies();
+  const validSessions = synced.filter(
+    ({ cookie, zitadel }) => cookie.token && zitadel?.factors?.user
+  );
+
   // Preferred session: пользователь выбрал аккаунт на странице выбора,
   // клиент запустил свежий signIn() → Zitadel создал новый auth request → мы здесь.
   // Auto-completим с выбранной сессией — PKCE cookies свежие, callbackUrl совпадёт.
   const preferredSessionId = await getPreferredSessionId();
-  if (preferredSessionId) {
-    // Cookie истечёт сам (maxAge: 120s) — модифицировать cookies из Server Component нельзя
-    const synced = await syncSessionCookies();
+  if (preferredSessionId && !isAddNew) {
     const preferred = synced.find(({ cookie }) => cookie.id === preferredSessionId);
     if (preferred?.cookie.token) {
       console.log("[login] Preferred session: sessionId=%s, requestId=%s", preferred.cookie.id, requestId);
@@ -71,30 +74,8 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
     // Preferred сессия не найдена или completeAuthRequest провалился — обычный flow
   }
 
-  // Если prompt=login — всегда показываем форму, иначе пробуем авто-complete
-  if (!forceLogin) {
-    // Сверяем cookies с Zitadel — отсеиваем протухшие/удалённые сессии
-    const synced = await syncSessionCookies();
-    const validSessions = synced.filter(
-      ({ cookie, zitadel }) => cookie.token && zitadel?.factors?.user
-    );
-
-    if (validSessions.length === 1) {
-      const s = validSessions[0].cookie;
-      console.log("[login] Auto-complete: sessionId=%s, requestId=%s", s.id, requestId);
-      const result = await completeAuthRequest(requestId, s.id, s.token);
-      if (result.success) {
-        const callbackUrl = result.data.callbackUrl || result.data.url;
-        console.log("[login] Auto-complete OK, callbackUrl=%s", callbackUrl);
-        redirect(callbackUrl || "/profile");
-      }
-      console.error("[login] Auto-complete FAILED:", JSON.stringify(result.error));
-      // При ошибке падаем на форму логина
-    }
-
-    if (validSessions.length >= 2) {
-      redirect(`/?requestId=${requestId}`);
-    }
+  if (validSessions.length >= 1 && !isAddNew) {
+    redirect(`/?requestId=${requestId}`);
   }
 
   // 0 сессий — показываем форму логина

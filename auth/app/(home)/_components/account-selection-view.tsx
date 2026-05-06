@@ -23,14 +23,10 @@ export function AccountSelectionView({ accounts, selectedId, isPending, onSelect
       <div className="absolute -bottom-[60%] -right-[60%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
 
       <div className="flex flex-col relative z-10 py-6 sm:py-8 flex-1">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-4 md:mb-6 text-primary border border-primary/20">
-            <AppLogoIcon className="w-6 h-6 md:w-8 md:h-8" />
-          </div>
-          <h1 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight text-center">
-            Выберите аккаунт
-          </h1>
-        </div>
+        <h1 className="mb-8 flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold text-foreground tracking-tight text-center">
+          <AppLogoIcon className="size-5 md:size-6 text-primary shrink-0" />
+          Выберите аккаунт
+        </h1>
 
         <div className="flex flex-col rounded-xl border border-border bg-card backdrop-blur-sm divide-y divide-border overflow-hidden shadow-none max-w-[480px] mx-auto w-full">
           {accounts.map((account) => {
@@ -89,14 +85,14 @@ export function AccountSelectionView({ accounts, selectedId, isPending, onSelect
             onClick={onAddAccount}
             disabled={isPending}
             className={cn(
-              "w-full flex items-center ml-1.5 gap-3 pl-3 pr-3 pt-2 pb-2 transition-all text-left hover:bg-secondary/50",
+              "w-full flex items-center gap-3 px-4.5 py-2 transition-all text-left hover:bg-secondary/50",
               isPending && "opacity-50 cursor-not-allowed"
             )}
           >
             <div className="h-8 w-8 shrink-0 rounded-full border border-dashed border-primary/30 flex items-center justify-center bg-primary/5 text-primary transition-colors">
               <Plus className="w-4 h-4" />
             </div>
-            <div className="flex-1 ml-2 font-medium text-sm text-foreground">
+            <div className="flex-1 font-medium text-sm text-foreground ml-2.5">
               Добавить другой аккаунт
             </div>
           </button>
