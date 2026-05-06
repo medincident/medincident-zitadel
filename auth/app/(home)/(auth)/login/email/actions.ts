@@ -11,8 +11,6 @@ export interface EmailLoginState {
   values?: { email?: string };
 }
 
-// Поле формы называется "email" для обратной совместимости, но принимает
-// и email, и username — ровно так же ведёт себя, например, Google/GitHub.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[\p{L}0-9._-]{1,64}$/u;
 
@@ -32,31 +30,17 @@ export async function loginWithEmailAction(
   if (!identifier || (!isEmail && !isUsername)) {
     errors.email = "Введите email или имя пользователя";
   }
-  if (!password || password.length < 1) {
+  if (!password) {
     errors.password = "Введите пароль";
-  } else if (password.length < 8) {
-    errors.password = "Пароль должен содержать не менее 8 символов";
-  } else if (password.length > 70) {
-    errors.password = "Пароль должен быть не более 70 символов";
-  } else if (!/[A-ZА-ЯЁ]/.test(password)) {
-    errors.password = "Пароль должен содержать заглавную букву";
-  } else if (!/[a-zа-яё]/.test(password)) {
-    errors.password = "Пароль должен содержать строчную букву";
-  } else if (!/\d/.test(password)) {
-    errors.password = "Пароль должен содержать цифру";
-  } else if (!/[^a-zA-Zа-яА-ЯёЁ0-9\s]/.test(password)) {
-    errors.password = "Пароль должен содержать символ или знак пунктуации";
   }
 
   if (Object.keys(errors).length > 0) {
     return { errors, values: { email: identifier } };
   }
 
-  // Zitadel /v2/sessions ищет строго по loginName, но пользователь мог
-  // ввести или email, или username. Резолвим до loginName:
-  //  - email    → searchUserByEmail → user.preferredLoginName
-  //  - username → searchUserByLoginName → user.preferredLoginName (для
-  //               downstream-проверок verify/totp нужна запись user)
+  // Резолвим до preferredLoginName, который ожидает Zitadel /v2/sessions:
+  //  - email    → searchUserByEmail
+  //  - username → searchUserByLoginName
   const lookup = isEmail
     ? await searchUserByEmail(identifier)
     : await searchUserByLoginName(identifier);

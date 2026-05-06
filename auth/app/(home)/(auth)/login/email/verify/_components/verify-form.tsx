@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui/button";
-import { OtpInput } from "@/shared/ui/otp-input";
+import { CodeInput } from "@/shared/ui/code-input";
 import { Loader2 } from "lucide-react";
 import { VerifyState } from "../actions";
 
@@ -42,7 +42,7 @@ export function VerifyForm({ action, resendAction, email }: Props) {
         )}
 
         <div className="flex flex-col items-center gap-2">
-          <OtpInput
+          <CodeInput
             name="code"
             length={6}
             disabled={isPending}

@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { createHumanUser, updateUserMiddleName } from "@/services/zitadel/api";
+import {
+  createHumanUser,
+  updateUserMetadata,
+  updateUserMiddleName,
+} from "@/services/zitadel/api";
 import { userService } from "@/services/grpc/client";
 import { ClientError } from "nice-grpc";
 import {
@@ -23,7 +27,28 @@ function extractFormFields(formData: FormData) {
     email: (formData.get("email") as string)?.trim() ?? "",
     password: (formData.get("password") as string) ?? "",
     confirm: (formData.get("confirm") as string) ?? "",
+    agreeTerms: formData.get("agreeTerms") === "1",
+    agreePdn: formData.get("agreePdn") === "1",
   };
+}
+
+function validateConsents(fields: { agreeTerms: boolean; agreePdn: boolean }): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (!fields.agreeTerms) {
+    errors.agreeTerms = "Необходимо принять пользовательское соглашение и политику конфиденциальности";
+  }
+  if (!fields.agreePdn) {
+    errors.agreePdn = "Необходимо согласие на обработку персональных данных";
+  }
+  return errors;
+}
+
+// Сохраняем факт согласия в metadata пользователя — нужно для аудита/152-ФЗ.
+async function persistConsentMetadata(userId: string) {
+  const now = new Date().toISOString();
+  // updateUserMetadata кодирует значение в Base64 сама.
+  await updateUserMetadata(userId, "consent_terms_accepted_at", now);
+  await updateUserMetadata(userId, "consent_pdn_accepted_at", now);
 }
 
 function validateNameFields(
@@ -115,10 +140,12 @@ export async function continueRegisterIdp(
   _prevState: RegisterFormState,
   formData: FormData
 ): Promise<RegisterFormState> {
-  const { givenName, familyName, middleName, email } = extractFormFields(formData);
+  const fields = extractFormFields(formData);
+  const { givenName, familyName, middleName, email, agreeTerms, agreePdn } = fields;
   const values = { givenName, familyName, middleName, email };
   const errors: Record<string, string> = {
     ...validateNameFields({ givenName, familyName, middleName }),
+    ...validateConsents({ agreeTerms, agreePdn }),
   };
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -160,8 +187,10 @@ export async function continueRegisterIdp(
     const userId = userRes.data.userId;
 
     if (middleName) await updateUserMiddleName(userId, middleName);
+    await persistConsentMetadata(userId);
 
-    // Сохраняем flow для шага /verify (IDP путь — без пароля)
+    // Сохраняем flow для шага /verify (IDP путь — без пароля).
+    // loginName = email, чтобы юзер мог входить по email после верификации.
     await setRegFlowCookie({
       givenName, familyName, middleName, email,
       source: "idp",
@@ -193,10 +222,12 @@ export async function continueRegisterEmail(
   _prevState: RegisterFormState,
   formData: FormData
 ): Promise<RegisterFormState> {
-  const { givenName, familyName, middleName, email, password, confirm } = extractFormFields(formData);
+  const fields = extractFormFields(formData);
+  const { givenName, familyName, middleName, email, password, confirm, agreeTerms, agreePdn } = fields;
   const values = { givenName, familyName, middleName, email };
   const errors: Record<string, string> = {
     ...validateNameFields({ givenName, familyName, middleName }),
+    ...validateConsents({ agreeTerms, agreePdn }),
   };
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -244,6 +275,7 @@ export async function continueRegisterEmail(
     const userId = userRes.data.userId;
 
     if (middleName) await updateUserMiddleName(userId, middleName);
+    await persistConsentMetadata(userId);
 
     await setRegFlowCookie({
       givenName, familyName, middleName, email,

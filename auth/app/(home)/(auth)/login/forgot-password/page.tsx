@@ -1,29 +1,22 @@
+import { Metadata } from "next";
 import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
-import { EmailLoginForm } from "./_components/email-login-form";
-import { loginWithEmailAction } from "./actions";
-import { env } from "@/shared/config/env";
+import { ForgotPasswordRequestForm } from "./_components/request-form";
+import { requestResetAction } from "./actions";
 
-export default async function EmailLoginPage({
+export const metadata: Metadata = {
+  title: "Восстановление пароля",
+  description: "Запрос кода для сброса пароля",
+};
+
+export default async function ForgotPasswordPage({
   searchParams,
 }: {
   searchParams: Promise<{ requestId?: string }>;
 }) {
   const { requestId } = await searchParams;
-  const boundAction = loginWithEmailAction.bind(null, requestId);
-
-  const registerHref = requestId
-    ? `/login/register?source=email&requestId=${requestId}`
-    : "/login/register?source=email";
-
-  const forgotPasswordHref = requestId
-    ? `/login/forgot-password?requestId=${requestId}`
-    : "/login/forgot-password";
-
-
-      const initialState = env.isDev
-        ? { values: { email: "admin@medincident.ru", password: "Password1!" }, errors: {}}
-        : { errors: {} }
+  const boundAction = requestResetAction.bind(null, requestId);
+  const loginHref = requestId ? `/login/email?requestId=${requestId}` : "/login/email";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-start pt-16 md:pt-24 p-4 bg-background font-sans">
@@ -33,14 +26,14 @@ export default async function EmailLoginPage({
             <AppLogoIcon className="w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Вход в {APP_NAME}
+            Восстановление пароля
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Войдите по электронной почте
+            Введите email вашего аккаунта в {APP_NAME}, и мы отправим вам код подтверждения.
           </p>
         </div>
 
-        <EmailLoginForm action={boundAction} registerHref={registerHref} forgotPasswordHref={forgotPasswordHref} initialState={initialState} />
+        <ForgotPasswordRequestForm action={boundAction} loginHref={loginHref} />
       </div>
     </div>
   );

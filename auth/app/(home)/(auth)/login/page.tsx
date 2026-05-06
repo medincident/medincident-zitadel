@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/shared/ui/card";
 import { AppLogoIcon } from "@/app/_components/icons";
-import { APP_NAME } from "@/shared/lib/constants";
+import { APP_NAME, PRIVACY_URL, TERMS_URL } from "@/shared/lib/constants";
 import { QrAuthSection } from "./_components/qr-auth-section";
 import { ExternalIdentityProviders } from "./_components/external-idp";
 import { fetchProvidersAction } from "./actions";
@@ -109,11 +109,11 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
 
           <p className="mt-6 md:mt-8 text-center text-xs text-muted-foreground leading-relaxed">
             Нажимая на кнопки входа, вы принимаете{" "}
-            <a href="#" className="text-primary font-medium transition-colors hover:underline">
+            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="text-primary font-medium transition-colors hover:underline">
               пользовательское соглашение
             </a>{" "}
             и{" "}
-            <a href="#" className="text-primary font-medium transition-colors hover:underline">
+            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="text-primary font-medium transition-colors hover:underline">
               политику конфиденциальности
             </a>{" "}
             сервиса {APP_NAME}.

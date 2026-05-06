@@ -234,6 +234,37 @@ export async function changeUserPassword(
 }
 
 // ==========================================
+// СБРОС ПАРОЛЯ (forgot password)
+// ==========================================
+
+// Просим Zitadel выслать пользователю код сброса на email.
+// Используем sendCode (не sendLink), чтобы пользователь возвращался в наш UI и
+// вводил код руками — это защищает от утечки кода через referer/clipboard.
+export async function requestPasswordReset(
+  userId: string
+): Promise<Result<z.infer<typeof ZitadelGenericUpdateResponseSchema>>> {
+  return handleZitadelRequest(
+    () => zitadelApi.post(`/v2/users/${userId}/password_reset`, { sendCode: {} }),
+    ZitadelGenericUpdateResponseSchema
+  );
+}
+
+// Установка нового пароля по verificationCode (без current password).
+export async function setPasswordWithCode(
+  userId: string,
+  verificationCode: string,
+  newPassword: string
+): Promise<Result<z.infer<typeof ZitadelGenericUpdateResponseSchema>>> {
+  return handleZitadelRequest(
+    () => zitadelApi.post(`/v2/users/${userId}/password`, {
+      verificationCode,
+      newPassword: { password: newPassword },
+    }),
+    ZitadelGenericUpdateResponseSchema
+  );
+}
+
+// ==========================================
 // ПОИСК ПОЛЬЗОВАТЕЛЕЙ
 // ==========================================
 
@@ -312,3 +343,4 @@ export async function searchUserByLoginName(
     ZitadelSearchUsersResponseSchema
   );
 }
+

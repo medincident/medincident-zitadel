@@ -23,15 +23,13 @@ export type SessionCookie<T = any> = Cookie & T;
 async function setSessionHttpOnlyCookie<T>(sessions: SessionCookie<T>[], iFrameEnabled: boolean = false) {
   const cookiesList = await cookies();
 
-  // "none" is required for iframe embedding (with secure flag)
+  // "none" is required for iframe embedding (with secure flag).
   let resolvedSameSite: "lax" | "strict" | "none";
 
   if (iFrameEnabled) {
-    // When embedded in iframe, must use "none" with secure flag
     resolvedSameSite = "none";
   } else {
-    // This allows cookies during top-level navigation while blocking cross-origin requests
-    resolvedSameSite = "lax";
+    resolvedSameSite = "strict";
   }
 
   return cookiesList.set({
@@ -40,7 +38,7 @@ async function setSessionHttpOnlyCookie<T>(sessions: SessionCookie<T>[], iFrameE
     httpOnly: true,
     path: "/",
     sameSite: resolvedSameSite,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
   });
 }
 

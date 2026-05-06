@@ -3,9 +3,10 @@
 import * as React from "react";
 import { cn } from "@/shared/lib/utils";
 
-interface OtpInputProps {
+interface CodeInputProps {
   length?: number;
   name?: string;
+  defaultValue?: string;
   disabled?: boolean;
   error?: boolean;
   autoFocus?: boolean;
@@ -13,16 +14,23 @@ interface OtpInputProps {
   onComplete?: (value: string) => void;
 }
 
-export function OtpInput({
+export function CodeInput({
   length = 6,
   name = "code",
+  defaultValue,
   disabled,
   error,
   autoFocus,
   className,
   onComplete,
-}: OtpInputProps) {
-  const [values, setValues] = React.useState<string[]>(() => Array(length).fill(""));
+}: CodeInputProps) {
+  const ALLOWED = /[A-Z0-9]/g;
+  const normalize = (s: string) => s.toUpperCase().match(ALLOWED)?.join("") ?? "";
+
+  const [values, setValues] = React.useState<string[]>(() => {
+    const seed = defaultValue ? normalize(defaultValue).slice(0, length) : "";
+    return Array.from({ length }, (_, i) => seed[i] ?? "");
+  });
   const inputsRef = React.useRef<Array<HTMLInputElement | null>>([]);
 
   const combined = values.join("");
@@ -36,9 +44,6 @@ export function OtpInput({
   }, [combined, length, onComplete]);
 
   const focusAt = (i: number) => inputsRef.current[i]?.focus();
-
-  const ALLOWED = /[A-Z0-9]/g;
-  const normalize = (s: string) => s.toUpperCase().match(ALLOWED)?.join("") ?? "";
 
   const setChar = (index: number, char: string) => {
     setValues((prev) => {

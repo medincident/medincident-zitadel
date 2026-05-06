@@ -5,12 +5,12 @@ x-zitadel-traefik-labels: &zitadel-traefik-labels
   traefik.docker.network: zitadel
   traefik.http.services.custom-ui.loadbalancer.server.port: 3000
 
-  traefik.http.routers.custom-ui-web.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
+  traefik.http.routers.custom-ui-web.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`))
   traefik.http.routers.custom-ui-web.entrypoints: web
   traefik.http.routers.custom-ui-web.service: custom-ui
   traefik.http.routers.custom-ui-web.priority: 1000
 
-  traefik.http.routers.custom-ui-websecure.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`))
+  traefik.http.routers.custom-ui-websecure.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`))
   traefik.http.routers.custom-ui-websecure.entrypoints: websecure
   traefik.http.routers.custom-ui-websecure.tls: true
   traefik.http.routers.custom-ui-websecure.service: custom-ui

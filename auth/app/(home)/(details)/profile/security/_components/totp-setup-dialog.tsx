@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { OtpInput } from "@/shared/ui/otp-input";
+import { CodeInput } from "@/shared/ui/code-input";
 import { CopyButton } from "@/shared/ui/copy-button";
 import { Loader2, Copy, Check, ShieldCheck } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -130,7 +130,7 @@ export function TotpSetupDialog({ open, onOpenChange, onSuccess }: Props) {
 
             <div className="flex flex-col items-center gap-2">
               <p className="text-xs text-muted-foreground">Введите код из приложения</p>
-              <OtpInput
+              <CodeInput
                 name="totp-code"
                 length={6}
                 autoFocus

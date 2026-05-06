@@ -13,10 +13,11 @@ import { env } from "@/shared/config/env";
 interface Props {
   action: (state: EmailLoginState, formData: FormData) => Promise<EmailLoginState>;
   registerHref: string;
+  forgotPasswordHref: string;
   initialState: any
 }
 
-export function EmailLoginForm({ action, registerHref, initialState }: Props) {
+export function EmailLoginForm({ action, registerHref, forgotPasswordHref, initialState }: Props) {
   const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
@@ -47,9 +48,18 @@ export function EmailLoginForm({ action, registerHref, initialState }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className={cn(state.errors?.password && "text-destructive")}>
-          Пароль
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password" className={cn(state.errors?.password && "text-destructive")}>
+            Пароль
+          </Label>
+          <Link
+            href={forgotPasswordHref}
+            className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+            tabIndex={-1}
+          >
+            Забыли пароль?
+          </Link>
+        </div>
         <Input
           id="password"
           name="password"

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 const IDP_INTENT_COOKIE = "zitadel_idp_intent";
 const REG_FLOW_COOKIE = "zitadel_reg_flow";
 const TOTP_PENDING_COOKIE = "zitadel_totp_pending";
+const PASSWORD_RESET_COOKIE = "zitadel_password_reset";
 const COOKIE_MAX_AGE = 60 * 15; // 15 минут
 
 // Данные IDP intent (для пути через внешний провайдер)
@@ -87,3 +88,17 @@ export interface TotpPendingData {
 export const setTotpPendingCookie = async (data: TotpPendingData) => setCookie(TOTP_PENDING_COOKIE, data);
 export const getTotpPendingCookie = async () => getCookie<TotpPendingData>(TOTP_PENDING_COOKIE);
 export const deleteTotpPendingCookie = async () => deleteCookie(TOTP_PENDING_COOKIE);
+
+// Forgot password flow: после запроса reset храним userId, чтобы на шаге verify
+// не дёргать поиск ещё раз. Email/loginName тут не сохраняем — они не нужны для
+// /password endpoint и нет смысла продлевать жизнь PII в cookie.
+export interface PasswordResetPendingData {
+  userId: string;
+  requestId?: string;
+}
+
+export const setPasswordResetCookie = async (data: PasswordResetPendingData) =>
+  setCookie(PASSWORD_RESET_COOKIE, data);
+export const getPasswordResetCookie = async () =>
+  getCookie<PasswordResetPendingData>(PASSWORD_RESET_COOKIE);
+export const deletePasswordResetCookie = async () => deleteCookie(PASSWORD_RESET_COOKIE);
