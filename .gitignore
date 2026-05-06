@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # === Secrets & env files ===
 .env
 .env.*
@@ -13,6 +11,12 @@ secrets/
 node_modules/
 .pnp
 .pnp.*
+package-lock.json
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # === Next.js ===
 .next/
@@ -36,6 +40,14 @@ yarn-error.log*
 next-env.d.ts
 coverage/
 
-# === Backups ===
+# === Backups & exports ===
 *.dump
 *.sql.gz
+zitadel[-_]export.json
+*.zitadel.json
+
+
+# === /auth ===
+auth/lib/generated/
+auth/*.py
+auth/*.txt

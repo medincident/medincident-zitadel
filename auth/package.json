@@ -8,8 +8,8 @@
     "build:errors": "__NEXT_TEST_MODE=true next build",
     "start": "env-cmd -f .env bun --bun next start -p 80",
     "lint": "eslint .",
-    "proto:update": "buf dep update",
-    "proto:generate": "mkdir -p lib/generated/proto && buf generate"
+    "proto:update": "cd proto && buf dep update",
+    "proto:generate": "mkdir -p lib/generated/proto && cd proto && buf generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

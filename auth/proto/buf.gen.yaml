@@ -1,9 +1,9 @@
 version: v2
 inputs:
-  - directory: proto
+  - directory: .
 plugins:
   - local: protoc-gen-ts_proto
-    out: lib/generated/proto
+    out: ../lib/generated/proto
     opt:
       - outputServices=nice-grpc
       - outputServices=generic-definitions
