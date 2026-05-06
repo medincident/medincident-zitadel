@@ -1,4 +1,4 @@
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
 import { EmailLoginForm } from "./_components/email-login-form";
 import { loginWithEmailAction } from "./actions";

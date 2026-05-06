@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/shared/ui/card";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
 import { QrAuthSection } from "./_components/qr-auth-section";
 import { Suspense } from "react";

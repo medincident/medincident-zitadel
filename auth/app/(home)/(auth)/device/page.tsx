@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { getOptionalSession } from "@/services/zitadel/session";
 import { getSession, getDeviceAuthorization } from "@/services/zitadel/api";
 import { unsealDeviceHint } from "@/services/zitadel/device-context";

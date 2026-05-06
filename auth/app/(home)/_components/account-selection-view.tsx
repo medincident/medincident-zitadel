@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { Loader2, Plus } from "lucide-react";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { cn } from "@/shared/lib/utils";
 import type { AccountDisplayItem } from "../actions";
 

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { getTotpPendingCookie } from "../_lib/reg-flow";
 import { TotpForm } from "./_components/totp-form";
 import { verifyTotpLoginAction } from "./actions";

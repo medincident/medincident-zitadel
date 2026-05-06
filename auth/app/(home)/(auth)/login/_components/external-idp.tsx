@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/shared/ui/button";
-import { MaxLogoIcon, TelegramLogoIcon } from "@/components/icons";
+import { MaxLogoIcon, TelegramLogoIcon } from "@/app/_components/icons";
 import { ZitadelIdp } from "@/services/zitadel/api";
 import { loginWithProviderAction } from "../actions";
 import { Mail } from "lucide-react";

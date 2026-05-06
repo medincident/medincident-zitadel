@@ -5,7 +5,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { AuthLoader } from "@/shared/ui/auth-loader";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { Plus } from "lucide-react";
 import { startZitadelSignIn } from "@/services/zitadel/user/sign-in";
 import { loadSessionsAction, type AccountDisplayItem } from "../actions";

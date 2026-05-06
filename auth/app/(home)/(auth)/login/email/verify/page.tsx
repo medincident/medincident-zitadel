@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { getRegFlowCookie } from "../../_lib/reg-flow";
 import { VerifyForm } from "./_components/verify-form";
 import { verifyEmailAction } from "./actions";

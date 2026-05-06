@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { RegisterView } from "./_components/register-view";
 import { continueRegisterIdp, continueRegisterEmail } from "./register-actions";
 import { getIdpIntentCookie } from "../_lib/reg-flow";

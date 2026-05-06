@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
-import { AppLogoIcon } from "@/components/icons";
+import { AppLogoIcon } from "@/app/_components/icons";
 import { Button } from "@/shared/ui/button";
 
 export default function DeviceSuccessPage() {
