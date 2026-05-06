@@ -17,7 +17,7 @@ export default async function AccountSelectionPage({ searchParams }: { searchPar
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background/50 font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background/50">
       <AccountSelectionContainer requestId={requestId} />
     </div>
   );

@@ -1,11 +1,15 @@
 "use client";
 
+import type { FC } from "react";
 import Link from "next/link";
+import { Mail } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { MaxLogoIcon, TelegramLogoIcon } from "@/app/_components/icons";
 import { ZitadelIdp } from "@/services/zitadel/api";
 import { loginWithProviderAction } from "../actions";
-import { Mail } from "lucide-react";
+
+const ICON_CLASS = "absolute left-4 top-1/2 -translate-y-1/2 transition-transform group-hover:scale-110";
+const BUTTON_CLASS = "w-full relative py-6 text-base group active:scale-[0.98]";
 
 interface AuthButtonProps {
   requestId?: string;
@@ -16,48 +20,33 @@ interface GenericButtonProps extends AuthButtonProps {
   name: string;
 }
 
-export const GenericButton = ({ requestId, idpId, name }: GenericButtonProps) => (
+const GenericButton: FC<GenericButtonProps> = ({ requestId, idpId, name }) => (
   <form action={loginWithProviderAction.bind(null, idpId, requestId)} className="w-full">
-    <Button
-      type="submit"
-      variant="outline"
-      size="lg"
-      className="w-full relative py-6 text-base group active:scale-[0.98]"
-    >
+    <Button type="submit" variant="outline" size="lg" className={BUTTON_CLASS}>
       <span>{name}</span>
     </Button>
   </form>
 );
 
-const TelegramButton = ({ requestId, idpId }: AuthButtonProps) => (
+const TelegramButton: FC<AuthButtonProps> = ({ requestId, idpId }) => (
   <form action={loginWithProviderAction.bind(null, idpId, requestId)} className="w-full">
-    <Button
-      type="submit"
-      variant="telegram"
-      size="lg"
-      className="w-full relative py-6 text-base group active:scale-[0.98]"
-    >
-      <TelegramLogoIcon className="absolute left-4 top-1/2 -translate-y-1/2 transition-transform group-hover:scale-110" />
+    <Button type="submit" variant="telegram" size="lg" className={BUTTON_CLASS}>
+      <TelegramLogoIcon className={ICON_CLASS} />
       <span className="pl-4">Telegram</span>
     </Button>
   </form>
 );
 
-const MaxButton = ({ requestId, idpId }: AuthButtonProps) => (
+const MaxButton: FC<AuthButtonProps> = ({ requestId, idpId }) => (
   <form action={loginWithProviderAction.bind(null, idpId, requestId)} className="w-full">
-    <Button
-      type="submit"
-      variant="max"
-      size="lg"
-      className="w-full relative py-6 text-base group active:scale-[0.98]"
-    >
-      <MaxLogoIcon className="absolute left-4 top-1/2 -translate-y-1/2 transition-transform group-hover:scale-110" />
+    <Button type="submit" variant="max" size="lg" className={BUTTON_CLASS}>
+      <MaxLogoIcon className={ICON_CLASS} />
       <span className="pl-4">MAX</span>
     </Button>
   </form>
 );
 
-const STYLED_PROVIDERS: Record<string, React.FC<AuthButtonProps>> = {
+const STYLED_PROVIDERS: Record<string, FC<AuthButtonProps>> = {
   telegram: TelegramButton,
   max: MaxButton,
 };
@@ -69,26 +58,18 @@ interface ExternalIdentityProvidersProps {
 
 export function ExternalIdentityProviders({ requestId, providers }: ExternalIdentityProvidersProps) {
   const emailHref = requestId ? `/login/email?requestId=${requestId}` : "/login/email";
+  const hasProviders = providers.length > 0;
 
   return (
     <div className="grid gap-2 md:gap-3">
-      {providers && providers.length > 0 && (
+      {hasProviders && (
         <>
           {providers.map((provider) => {
-            const lowerCaseName = provider.name.toLowerCase();
-            const StyledProvider = STYLED_PROVIDERS[lowerCaseName];
-
-            if (StyledProvider) {
-              return <StyledProvider key={provider.id} requestId={requestId} idpId={provider.id} />;
-            }
-
-            return (
-              <GenericButton
-                key={provider.id}
-                requestId={requestId}
-                idpId={provider.id}
-                name={provider.name}
-              />
+            const StyledProvider = STYLED_PROVIDERS[provider.name.toLowerCase()];
+            return StyledProvider ? (
+              <StyledProvider key={provider.id} requestId={requestId} idpId={provider.id} />
+            ) : (
+              <GenericButton key={provider.id} requestId={requestId} idpId={provider.id} name={provider.name} />
             );
           })}
 
@@ -103,14 +84,9 @@ export function ExternalIdentityProviders({ requestId, providers }: ExternalIden
         </>
       )}
 
-      <Button
-        variant="outline"
-        size="lg"
-        className="w-full relative py-6 text-base active:scale-[0.98]"
-        asChild
-      >
+      <Button variant="outline" size="lg" className={BUTTON_CLASS} asChild>
         <Link href={emailHref}>
-          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" />
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-5" />
           <span className="pl-4">Электронная почта</span>
         </Link>
       </Button>

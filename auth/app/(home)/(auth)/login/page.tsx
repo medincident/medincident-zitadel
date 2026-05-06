@@ -1,12 +1,10 @@
 import { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
 import { QrAuthSection } from "./_components/qr-auth-section";
-import { Suspense } from "react";
 import { ExternalIdentityProviders } from "./_components/external-idp";
 import { fetchProvidersAction } from "./actions";
 import { completeAuthRequest, getAuthRequest } from "@/services/zitadel/api";
@@ -33,18 +31,20 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
     redirect("/profile");
   }
 
-  // Проверяем auth request у Zitadel — содержит ли prompt=select_account
-  // Zitadel не прокидывает prompt в redirect URL, но хранит его в auth request
+  // Проверка OIDC request содержит prompt=login или prompt=select_account
+  let forceLogin = false;
   let forceSelectAccount = false;
   const authReqResult = await getAuthRequest(requestId);
   if (authReqResult.success) {
     const prompts = authReqResult.data.authRequest?.prompt || [];
+    forceLogin = prompts.some((p: string) =>
+      p === "PROMPT_LOGIN" || p === "login"
+    );
     forceSelectAccount = prompts.some((p: string) =>
       p === "PROMPT_SELECT_ACCOUNT" || p === "select_account"
     );
   }
 
-  // prompt=select_account — принудительно показать выбор аккаунта
   if (forceSelectAccount) {
     redirect(`/?requestId=${requestId}`);
   }
@@ -71,60 +71,55 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
       }
       console.error("[login] Preferred session FAILED:", JSON.stringify(result.error));
     }
-    // Preferred сессия не найдена или completeAuthRequest провалился — обычный flow
   }
 
   if (validSessions.length >= 1 && !isAddNew) {
     redirect(`/?requestId=${requestId}`);
   }
 
-  // 0 сессий — показываем форму логина
   return (
-    <main className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 font-sans overflow-x-hidden">
-      <div className="w-full flex justify-center max-w-full">
-        <Card className="w-full max-w-[960px] overflow-hidden rounded-xl border border-border bg-card grid grid-cols-1 md:grid-cols-2 animate-in fade-in duration-500">
+    <main className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-x-hidden">
+      <Card className="w-full max-w-[960px] overflow-hidden grid grid-cols-1 md:grid-cols-2 animate-in fade-in duration-500">
+        {/* LEFT COLUMN */}
+        <div className="hidden md:flex relative flex-col items-center justify-center text-center p-12 overflow-hidden border-r border-border bg-primary/5">
+          <div className="absolute -top-[40%] -left-[40%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-xl pointer-events-none" />
+          <div className="absolute -bottom-[40%] -right-[50%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-xl pointer-events-none" />
+          <Suspense>
+            <QrAuthSection requestId={requestId} />
+          </Suspense>
+        </div>
 
-          {/* LEFT COLUMN */}
-          <div className="hidden md:flex relative flex-col items-center justify-center text-center p-12 overflow-hidden border-r border-border bg-primary/5">
-            <div className="absolute -top-[40%] -left-[40%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-xl pointer-events-none" />
-            <div className="absolute -bottom-[40%] -right-[50%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-xl pointer-events-none" />
-            <Suspense>
-              <QrAuthSection requestId={requestId} />
-            </Suspense>
+        {/* RIGHT COLUMN */}
+        <CardContent className="p-6 sm:p-8 md:p-12 flex flex-col justify-center min-h-[450px] md:min-h-auto">
+          <div className="flex flex-col items-center md:items-start mb-6 md:mb-8">
+            <div className="size-12 md:size-16 bg-primary/10 rounded-xl flex items-center justify-center mb-4 md:mb-6 text-primary border border-primary/20">
+              <AppLogoIcon className="size-6 md:size-8" />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-center md:text-left">
+              Вход в {APP_NAME}
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm md:text-base text-center md:text-left">
+              Единый аккаунт для всех медицинских сервисов
+            </p>
           </div>
 
-          {/* RIGHT COLUMN */}
-          <CardContent className="p-6 sm:p-8 md:p-12 flex flex-col justify-center min-h-[450px] md:min-h-auto">
-            <div className="flex flex-col items-center md:items-start mb-6 md:mb-8">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-4 md:mb-6 text-primary border border-primary/20">
-                <AppLogoIcon className="w-6 h-6 md:w-8 md:h-8" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight text-center md:text-left">
-                Вход в {APP_NAME}
-              </h1>
-              <p className="text-muted-foreground mt-2 text-sm md:text-base text-center md:text-left">
-                Единый аккаунт для всех медицинских сервисов
-              </p>
-            </div>
+          <div className="space-y-4 md:space-y-6">
+            <ProviderButtons requestId={requestId} />
+          </div>
 
-            <div className="space-y-4 md:space-y-6 w-full">
-              <ProviderButtons requestId={requestId} />
-            </div>
-
-            <p className="mt-6 md:mt-8 text-center text-xs text-muted-foreground leading-relaxed px-2 md:px-0">
-              Нажимая на кнопки входа, вы принимаете{" "}
-              <a href="#" className="text-primary hover:underline font-medium transition-colors">
-                пользовательское соглашение
-              </a>{" "}
-              и{" "}
-              <a href="#" className="text-primary hover:underline font-medium transition-colors">
-                политику конфиденциальности
-              </a>{" "}
-              сервиса {APP_NAME}.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <p className="mt-6 md:mt-8 text-center text-xs text-muted-foreground leading-relaxed">
+            Нажимая на кнопки входа, вы принимаете{" "}
+            <a href="#" className="text-primary font-medium transition-colors hover:underline">
+              пользовательское соглашение
+            </a>{" "}
+            и{" "}
+            <a href="#" className="text-primary font-medium transition-colors hover:underline">
+              политику конфиденциальности
+            </a>{" "}
+            сервиса {APP_NAME}.
+          </p>
+        </CardContent>
+      </Card>
     </main>
   );
 }
