@@ -243,6 +243,7 @@ services:
   custom-ui:
     profiles: [ prod ]
     image: ${CUSTOM_UI_IMAGE}
+    pull_policy: always
     restart: unless-stopped
     build:
       context: ./auth
@@ -260,6 +261,7 @@ services:
       - zitadel
     labels:
       <<: *zitadel-traefik-labels
+      com.centurylinklabs.watchtower.enable: "true"
     logging:
       driver: "json-file"
       options:
@@ -330,11 +332,11 @@ services:
     image: containrrr/watchtower:latest
     restart: unless-stopped
     environment:
-      # GHCR credentials
       REPO_USER: ${GHCR_USERNAME}
       REPO_PASS: ${GHCR_TOKEN}
-      # Poll interval in seconds (default: 86400 = 24h)
-      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-86400}
+      DOCKER_API_VERSION: "1.40"
+      # Poll interval in seconds (default: 1h)
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-3600}
       # Only update containers that have the watchtower label
       WATCHTOWER_LABEL_ENABLE: "true"
       # Send notifications (optional, set WATCHTOWER_NOTIFICATION_URL)
