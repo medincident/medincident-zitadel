@@ -244,15 +244,17 @@ export function SessionsList({
             </div>
 
             <div className="z-10 ml-2 flex items-center gap-1">
-                <QrScannerButton variant="compact" />
+                <QrScannerButton variant="compact-responsive" />
                 <LogoutConfirmDialog>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-2"
+                        aria-label="Выйти"
+                        title="Выйти"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:gap-2"
                     >
-                        Выйти
-                        <LogOut className="w-4 h-4" />
+                        <span className="hidden sm:inline">Выйти</span>
+                        <LogOut className="size-4" />
                     </Button>
                 </LogoutConfirmDialog>
             </div>

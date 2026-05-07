@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { QRCode } from "react-qrcode-logo";
+import { SmoothQr } from "@/shared/ui/smooth-qr";
 import {
   Dialog,
   DialogContent,
@@ -113,7 +113,7 @@ export function TotpSetupDialog({ open, onOpenChange, onSuccess }: Props) {
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3 p-4 rounded-xl bg-card border border-border">
               <div className="rounded-lg bg-white p-3">
-                <QRCode value={uri} size={180} quietZone={0} />
+                <SmoothQr value={uri} size={180} quietZone={0} />
               </div>
               <CopyButton
                 text={secret}
@@ -133,6 +133,7 @@ export function TotpSetupDialog({ open, onOpenChange, onSuccess }: Props) {
               <CodeInput
                 name="totp-code"
                 length={6}
+                mode="numeric"
                 autoFocus
                 disabled={isVerifying}
                 error={!!error && code.length === 0}

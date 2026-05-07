@@ -55,10 +55,12 @@ export function UserHeaderCard({ user }: { user: PersonalInfo }) {
           variant="ghost"
           size="sm"
           onClick={handleSwitchAccount}
-          className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 gap-2"
+          aria-label="Сменить аккаунт"
+          title="Сменить аккаунт"
+          className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 sm:gap-2"
         >
           <UserRoundCog />
-          Сменить аккаунт
+          <span className="hidden sm:inline">Сменить аккаунт</span>
         </Button>
       </div>
     </div>

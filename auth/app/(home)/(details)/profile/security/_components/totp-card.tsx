@@ -62,10 +62,10 @@ export function TotpCard() {
           </div>
           <div className="flex flex-col gap-0.5 min-w-0">
             <h4 className="font-medium text-foreground text-sm truncate">
-              Google Authenticator
+              Приложение-аутентификатор
             </h4>
             <p className="text-xs text-muted-foreground truncate">
-              {enabled ? "2FA включена" : "Добавьте код из приложения-аутентификатора"}
+              {enabled ? "Подключено" : "Аутентификация по коду из приложения"}
             </p>
           </div>
         </div>

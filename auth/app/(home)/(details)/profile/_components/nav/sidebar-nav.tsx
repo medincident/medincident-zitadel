@@ -2,89 +2,78 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  ShieldCheckIcon,
+  LogOutIcon,
+  ArrowLeft,
+  MonitorSmartphone,
+  Settings2,
+  Settings,
+  ExternalLink,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { ShieldCheckIcon, LogOutIcon, ArrowLeft, MonitorSmartphone, Settings2, Settings } from "lucide-react";
 import { QrScannerButton } from "../qr-scanner-button";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { SidebarUserCard } from "./sidebar-user-card";
 import { LogoutConfirmDialog } from "../logout-confirm-dialog";
 
+interface NavItemProps {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  isActive: boolean;
+}
+
+function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
+        isActive
+          ? "bg-primary/10 text-primary shadow-sm"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground/70")} />
+      {label}
+    </Link>
+  );
+}
+
 export function SidebarNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
 
-  const getHref = (path: string) => (from ? `${path}?from=${from}` : path);
+  const withFrom = (path: string) => (from ? `${path}?from=${from}` : path);
 
-  const isDetailsActive = pathname?.startsWith("/profile/details");
-  const isSecurityActive = pathname?.startsWith("/profile/security");
-  const isSessionsActive = pathname?.startsWith("/profile/sessions");
-  const isSettingsActive = pathname?.startsWith("/profile/settings");
+  const items: Array<Omit<NavItemProps, "isActive"> & { match: string }> = [
+    { href: withFrom("/profile/security"), icon: ShieldCheckIcon, label: "Безопасность", match: "/profile/security" },
+    { href: withFrom("/profile/sessions"), icon: MonitorSmartphone, label: "Сессии", match: "/profile/sessions" },
+    { href: withFrom("/profile/settings"), icon: Settings2, label: "Настройки", match: "/profile/settings" },
+  ];
+
+  const isDetailsActive = !!pathname?.startsWith("/profile/details");
 
   return (
     <nav className="flex flex-col gap-2 h-full">
-      <Link href={getHref("/profile/details")} className="block group">
+      <Link href={withFrom("/profile/details")} className="block group">
         <SidebarUserCard isActive={isDetailsActive} />
       </Link>
 
       <div className="flex flex-col gap-1">
-        <Link href={getHref("/profile/security")}>
-          <span
-            className={cn(
-              "flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-              isSecurityActive ?
-                "bg-primary/10 text-primary shadow-sm"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <ShieldCheckIcon
-              className={cn(
-                "h-5 w-5",
-                isSecurityActive ? "text-primary" : "text-muted-foreground/70",
-              )}
-            />
-            Безопасность
-          </span>
-        </Link>
-
-        <Link href={getHref("/profile/sessions")}>
-          <span
-            className={cn(
-              "flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-              isSessionsActive ?
-                "bg-primary/10 text-primary shadow-sm"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <MonitorSmartphone
-              className={cn(
-                "h-5 w-5",
-                isSessionsActive ? "text-primary" : "text-muted-foreground/70",
-              )}
-            />
-            Сессии
-          </span>
-        </Link>
-
-        <Link href={getHref("/profile/settings")}>
-          <span
-            className={cn(
-              "flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-              isSettingsActive ?
-                "bg-primary/10 text-primary shadow-sm"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <Settings2
-              className={cn(
-                "h-5 w-5",
-                isSettingsActive ? "text-primary" : "text-muted-foreground/70",
-              )}
-            />
-            Настройки
-          </span>
-        </Link>
+        {items.map((item) => (
+          <NavItem
+            key={item.href}
+            href={item.href}
+            icon={item.icon}
+            label={item.label}
+            isActive={!!pathname?.startsWith(item.match)}
+          />
+        ))}
 
         <div className="px-2 my-1">
           <Separator />
@@ -103,18 +92,19 @@ export function SidebarNav() {
           </Button>
         )}
 
+        <QrScannerButton />
+
         <Button
           variant="ghost"
           asChild
-          className="w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
+          className="group w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
         >
-          <Link href="/ui/console">
-            <Settings className="h-5 w-5" />
-            Админизация
-          </Link>
+          <a href="/ui/console" target="_blank" rel="noopener noreferrer">
+            <Settings className="h-5 w-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
+            <span className="flex-1 text-left">Админизация</span>
+            <ExternalLink className="h-4 w-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
+          </a>
         </Button>
-
-        <QrScannerButton />
 
         <LogoutConfirmDialog>
           <Button

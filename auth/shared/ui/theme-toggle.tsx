@@ -12,8 +12,8 @@ interface ThemeToggleProps {
 }
 
 const THEMES = [
-  { value: 'light',  label: 'Светлая',   icon: Sun },
-  { value: 'dark',   label: 'Тёмная',    icon: Moon },
+  { value: 'light', label: 'Светлая', icon: Sun },
+  { value: 'dark', label: 'Тёмная', icon: Moon },
   { value: 'system', label: 'Системная', icon: Monitor },
 ] as const;
 
@@ -32,7 +32,10 @@ export function ThemeToggle({ variant = 'segmented', className }: ThemeTogglePro
   useEffect(() => setMounted(true), []);
 
   if (variant === 'icon') {
-    const current = THEMES.find((t) => t.value === theme) ?? THEMES[0];
+    // До монтирования рисуем нейтральную иконку — без флика и без рассинхронизации с сервером.
+    const current = mounted
+      ? (THEMES.find((t) => t.value === theme) ?? THEMES[0])
+      : THEMES[0];
     const Icon = current.icon;
     return (
       <Button
@@ -41,6 +44,7 @@ export function ThemeToggle({ variant = 'segmented', className }: ThemeTogglePro
         className={className}
         onClick={() => setTheme(nextTheme(theme))}
         title={`Тема: ${current.label}`}
+        suppressHydrationWarning
       >
         <Icon />
       </Button>
@@ -48,14 +52,17 @@ export function ThemeToggle({ variant = 'segmented', className }: ThemeTogglePro
   }
 
   return (
-    <div className={cn('flex rounded-xl border border-border bg-muted p-1', className)}>
+    <div
+      className={cn('flex rounded-xl border border-border bg-muted p-1', className)}
+      suppressHydrationWarning
+    >
       {THEMES.map(({ value, label, icon: Icon }, idx) => {
-        const isActive = mounted && theme === value;
+        // Пока не смонтировались — синхронно подсвечиваем "Светлая" (defaultTheme),
+        // чтобы пользователь не видел вспышку "ничего не выбрано".
+        const isActive = mounted ? theme === value : value === 'light';
         return (
           <Fragment key={value}>
-            {idx > 0 && (
-              <div className="my-2 w-px self-stretch bg-border" aria-hidden />
-            )}
+            {idx > 0 && <div className="my-2 w-px self-stretch bg-border" aria-hidden />}
             <button
               onClick={() => setTheme(value)}
               title={label}
@@ -63,7 +70,7 @@ export function ThemeToggle({ variant = 'segmented', className }: ThemeTogglePro
                 'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-200',
                 isActive
                   ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
               )}
             >
               <Icon className="size-4 shrink-0" />

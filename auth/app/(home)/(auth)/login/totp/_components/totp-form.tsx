@@ -43,6 +43,7 @@ export function TotpForm({ action }: Props) {
           <CodeInput
             name="code"
             length={6}
+            mode="numeric"
             disabled={isPending}
             autoFocus
             error={!!state.errors?.code}

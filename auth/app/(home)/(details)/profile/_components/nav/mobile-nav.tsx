@@ -1,61 +1,48 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { User as UserIcon, ShieldCheck, MonitorSmartphone, Settings2, type LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { User as UserIcon, ShieldCheck, MonitorSmartphone, Settings2 } from "lucide-react";
+
+interface Tab {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  match: (pathname: string | null) => boolean;
+}
+
+const TABS: Tab[] = [
+  { name: "Данные", href: "/profile/details", icon: UserIcon, match: (p) => p === "/profile/details" },
+  { name: "Безопасность", href: "/profile/security", icon: ShieldCheck, match: (p) => !!p?.startsWith("/profile/security") },
+  { name: "Сессии", href: "/profile/sessions", icon: MonitorSmartphone, match: (p) => !!p?.startsWith("/profile/sessions") },
+  { name: "Настройки", href: "/profile/settings", icon: Settings2, match: (p) => !!p?.startsWith("/profile/settings") },
+];
 
 export function MobileNav() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from");
-
-  const getHref = (path: string) => from ? `${path}?from=${from}` : path;
-
-  const tabs = [
-    {
-      name: "Данные",
-      href: "/profile/details",
-      isActive: pathname === "/profile/details",
-      icon: UserIcon
-    },
-    {
-      name: "Безопасность",
-      href: "/profile/security",
-      isActive: pathname?.startsWith("/profile/security"),
-      icon: ShieldCheck
-    },
-    {
-      name: "Сессии",
-      href: "/profile/sessions",
-      isActive: pathname?.startsWith("/profile/sessions"),
-      icon: MonitorSmartphone
-    },
-    {
-      name: "Настройки",
-      href: "/profile/settings",
-      isActive: pathname?.startsWith("/profile/settings"),
-      icon: Settings2
-    }
-  ];
+  const from = useSearchParams().get("from");
 
   return (
     <div className="flex items-center justify-between gap-4 w-full">
-        {tabs.map((tab) => (
-          <Link 
-            key={tab.href} 
-            href={getHref(tab.href)}
+      {TABS.map(({ name, href, icon: Icon, match }) => {
+        const isActive = match(pathname);
+        return (
+          <Link
+            key={href}
+            href={from ? `${href}?from=${from}` : href}
             className={cn(
               "flex-1 flex flex-col items-center justify-center py-2 text-xs font-medium rounded-lg transition-all duration-200",
-              tab.isActive 
-                ? "bg-card text-primary shadow-sm" 
-                : "text-muted-foreground hover:bg-card hover:text-foreground"
+              isActive
+                ? "bg-card text-primary shadow-sm"
+                : "text-muted-foreground hover:bg-card hover:text-foreground",
             )}
           >
-             <tab.icon className={cn("w-5 h-5 mb-0.5", tab.isActive && "text-primary")} />
-            {tab.name}
+            <Icon className={cn("size-5 mb-0.5", isActive && "text-primary")} />
+            {name}
           </Link>
-        ))}
+        );
+      })}
     </div>
   );
 }

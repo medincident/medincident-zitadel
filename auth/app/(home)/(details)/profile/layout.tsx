@@ -67,15 +67,22 @@ export default async function ProfileLayout({
         <main className="flex-1 min-h-0 h-full flex flex-col overflow-hidden">
           <Card
             className={cn(
-              "w-full bg-card flex flex-col overflow-hidden",
+              "relative w-full bg-card flex flex-col overflow-hidden",
               "rounded-none border-0 h-full",
               "md:rounded-xl md:border md:border-border",
             )}
           >
-            <div className="flex-1 overflow-y-auto scrollbar-app relative p-4 md:p-8 md:max-w-4xl mx-auto w-full">
-              <EmailGuardedContent>
-                {children}
-              </EmailGuardedContent>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-[40%] -left-[40%] size-[80%] rounded-full bg-primary/2 blur-[100px]"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -bottom-[40%] -right-[40%] size-[80%] rounded-full bg-primary/4 blur-[100px]"
+            />
+
+            <div className="relative flex-1 overflow-y-auto scrollbar-app p-4 md:p-8 md:max-w-4xl mx-auto w-full">
+              <EmailGuardedContent>{children}</EmailGuardedContent>
             </div>
           </Card>
         </main>

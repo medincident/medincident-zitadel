@@ -17,7 +17,7 @@ export default async function TotpLoginPage() {
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary border border-primary/20">
             <AppLogoIcon className="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Двухфакторная аутентификация</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Двухфакторная аутентификация (2FA)</h1>
           <p className="text-muted-foreground mt-2 text-sm">
             Откройте Google Authenticator
           </p>

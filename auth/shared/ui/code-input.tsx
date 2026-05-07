@@ -3,6 +3,8 @@
 import * as React from "react";
 import { cn } from "@/shared/lib/utils";
 
+type CodeMode = "alphanumeric" | "numeric";
+
 interface CodeInputProps {
   length?: number;
   name?: string;
@@ -12,7 +14,40 @@ interface CodeInputProps {
   autoFocus?: boolean;
   className?: string;
   onComplete?: (value: string) => void;
+  /**
+   * "alphanumeric" — A-Z + 0-9, ввод приводится к верхнему регистру (Zitadel email/reset codes).
+   * "numeric" — только 0-9 (TOTP, OTP).
+   */
+  mode?: CodeMode;
 }
+
+interface CodeModeConfig {
+  allowed: RegExp; // глобальный — для match
+  keyAllowed: RegExp; // одиночный символ — для keydown
+  uppercase: boolean;
+  inputMode: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  htmlPattern: string;
+  autoCapitalize: "off" | "characters";
+}
+
+const MODES: Record<CodeMode, CodeModeConfig> = {
+  alphanumeric: {
+    allowed: /[A-Z0-9]/g,
+    keyAllowed: /^[A-Za-z0-9]$/,
+    uppercase: true,
+    inputMode: "text",
+    htmlPattern: "[A-Z0-9]*",
+    autoCapitalize: "characters",
+  },
+  numeric: {
+    allowed: /[0-9]/g,
+    keyAllowed: /^[0-9]$/,
+    uppercase: false,
+    inputMode: "numeric",
+    htmlPattern: "[0-9]*",
+    autoCapitalize: "off",
+  },
+};
 
 export function CodeInput({
   length = 6,
@@ -23,9 +58,17 @@ export function CodeInput({
   autoFocus,
   className,
   onComplete,
+  mode = "alphanumeric",
 }: CodeInputProps) {
-  const ALLOWED = /[A-Z0-9]/g;
-  const normalize = (s: string) => s.toUpperCase().match(ALLOWED)?.join("") ?? "";
+  const config = MODES[mode];
+
+  const normalize = React.useCallback(
+    (s: string) => {
+      const transformed = config.uppercase ? s.toUpperCase() : s;
+      return transformed.match(config.allowed)?.join("") ?? "";
+    },
+    [config],
+  );
 
   const [values, setValues] = React.useState<string[]>(() => {
     const seed = defaultValue ? normalize(defaultValue).slice(0, length) : "";
@@ -68,9 +111,9 @@ export function CodeInput({
     // Не перехватываем сочетания (Ctrl/Cmd+V/C/A и т.п.) — пусть отрабатывает paste/copy.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (key.length === 1 && /^[A-Za-z0-9]$/.test(key)) {
+    if (key.length === 1 && config.keyAllowed.test(key)) {
       e.preventDefault();
-      setChar(index, key.toUpperCase());
+      setChar(index, config.uppercase ? key.toUpperCase() : key);
       return;
     }
 
@@ -119,10 +162,10 @@ export function CodeInput({
             inputsRef.current[i] = el;
           }}
           type="text"
-          inputMode="text"
+          inputMode={config.inputMode}
           autoComplete="one-time-code"
-          autoCapitalize="characters"
-          pattern="[A-Z0-9]*"
+          autoCapitalize={config.autoCapitalize}
+          pattern={config.htmlPattern}
           maxLength={1}
           disabled={disabled}
           value={value}
