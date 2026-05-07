@@ -63,7 +63,13 @@ async function getCookie<T>(name: string): Promise<T | null> {
 
 async function deleteCookie(name: string) {
   const store = await cookies();
-  store.delete(name);
+  store.set(name, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 // IDP Intent cookie

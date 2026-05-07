@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { CodeInput } from "@/shared/ui/code-input";
+import { ResendCodeButton } from "@/shared/ui/resend-code-button";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { PasswordRequirements } from "@/shared/ui/password-requirements";
@@ -98,14 +99,9 @@ export function ResetPasswordForm({ action, resendAction, loginHref, defaultCode
         </div>
       </form>
 
-      <form action={resendAction} className="flex justify-center">
-        <button
-          type="submit"
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
-        >
-          Отправить код повторно
-        </button>
-      </form>
+      <div className="flex justify-center">
+        <ResendCodeButton action={resendAction} />
+      </div>
     </div>
   );
 }

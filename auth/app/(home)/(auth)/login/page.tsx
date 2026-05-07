@@ -78,7 +78,7 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
   }
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-x-hidden">
+    <main className="h-dvh overflow-y-auto overflow-x-hidden w-full flex items-center justify-center p-4 sm:p-6">
       <Card className="w-full max-w-[960px] overflow-hidden grid grid-cols-1 md:grid-cols-2 animate-in fade-in duration-500">
         {/* LEFT COLUMN */}
         <div className="hidden md:flex relative flex-col items-center justify-center text-center p-12 overflow-hidden border-r border-border bg-primary/5">

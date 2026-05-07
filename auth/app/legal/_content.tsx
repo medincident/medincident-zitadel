@@ -11,11 +11,12 @@ const PRIVACY_EMAIL = "privacy@medincident.ru";
 
 function DocHeader({ title }: { title: string }) {
   return (
-    <header className="not-prose mb-6 pb-4 border-b border-border">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">{APP_NAME}</p>
-      <h1 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Редакция {REVISION} от {EFFECTIVE_DATE}
+    <header className="not-prose mb-6 sm:mb-8 pb-4 sm:pb-5 border-b border-border/60">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+        {title}
+      </h1>
+      <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
+        Редакция {REVISION} · действует с {EFFECTIVE_DATE}
       </p>
     </header>
   );

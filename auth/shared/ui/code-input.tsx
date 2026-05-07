@@ -65,6 +65,9 @@ export function CodeInput({
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     const key = e.key;
 
+    // Не перехватываем сочетания (Ctrl/Cmd+V/C/A и т.п.) — пусть отрабатывает paste/copy.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
     if (key.length === 1 && /^[A-Za-z0-9]$/.test(key)) {
       e.preventDefault();
       setChar(index, key.toUpperCase());
@@ -92,17 +95,22 @@ export function CodeInput({
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pasted = normalize(e.clipboardData.getData("text")).slice(0, length);
+    const pasted = normalize(e.clipboardData.getData("text")).slice(0, length - index);
     if (!pasted) return;
-    const next = Array.from({ length }, (_, i) => pasted[i] ?? "");
-    setValues(next);
-    focusAt(Math.min(pasted.length, length - 1));
+    setValues((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < pasted.length; i++) {
+        next[index + i] = pasted[i];
+      }
+      return next;
+    });
+    focusAt(Math.min(index + pasted.length, length - 1));
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-1.5 sm:gap-2", className)}>
       <input type="hidden" name={name} value={combined} />
       {values.map((value, i) => (
         <input
@@ -120,11 +128,11 @@ export function CodeInput({
           value={value}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
-          onPaste={handlePaste}
+          onPaste={(e) => handlePaste(i, e)}
           onFocus={(e) => e.target.select()}
           aria-label={`Символ ${i + 1}`}
           className={cn(
-            "h-12 w-11 rounded-lg border bg-card text-center text-lg font-medium text-foreground transition-all",
+            "h-11 w-10 sm:h-12 sm:w-11 rounded-lg border bg-card text-center text-base sm:text-lg font-medium text-foreground transition-all",
             "focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             error

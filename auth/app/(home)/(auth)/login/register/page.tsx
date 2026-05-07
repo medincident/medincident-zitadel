@@ -34,16 +34,15 @@ export default async function RegisterPage({
     const boundAction = continueRegisterIdp.bind(null, requestId);
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-start pt-16 md:pt-24 p-4 bg-background font-sans">
-        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-          <div className="flex flex-col items-center mb-8 text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary border border-primary/20">
-              <AppLogoIcon className="w-8 h-8" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Регистрация</h1>
-            <p className="text-muted-foreground mt-2 text-sm">Проверьте и заполните ваши данные</p>
+      <div className="h-dvh overflow-y-auto bg-background font-sans">
+        <div className="min-h-full flex items-center justify-center px-4 py-6 sm:py-8">
+          <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+            <h1 className="mb-6 sm:mb-8 flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold tracking-tight text-foreground">
+              <AppLogoIcon className="size-5 md:size-6 text-primary shrink-0" />
+              Регистрация
+            </h1>
+            <RegisterView action={boundAction} initialData={initialData} />
           </div>
-          <RegisterView action={boundAction} initialData={initialData} />
         </div>
       </div>
     );
@@ -53,20 +52,19 @@ export default async function RegisterPage({
   const boundAction = continueRegisterEmail.bind(null, requestId);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start pt-16 md:pt-24 p-4 bg-background font-sans">
-      <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary border border-primary/20">
-            <AppLogoIcon className="w-8 h-8" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Регистрация</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Заполните ваши данные</p>
+    <div className="h-dvh overflow-y-auto bg-background font-sans">
+      <div className="min-h-full flex items-center justify-center px-4 py-6 sm:py-8">
+        <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+          <h1 className="mb-6 sm:mb-8 flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold tracking-tight text-foreground">
+            <AppLogoIcon className="size-5 md:size-6 text-primary shrink-0" />
+            Регистрация
+          </h1>
+          <RegisterView
+            action={boundAction}
+            initialData={{ givenName: "", familyName: "", middleName: "", email: "" }}
+            showPassword
+          />
         </div>
-        <RegisterView
-          action={boundAction}
-          initialData={{ givenName: "", familyName: "", middleName: "", email: "" }}
-          showPassword
-        />
       </div>
     </div>
   );

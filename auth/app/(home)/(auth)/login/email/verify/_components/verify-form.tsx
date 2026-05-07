@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui/button";
 import { CodeInput } from "@/shared/ui/code-input";
+import { ResendCodeButton } from "@/shared/ui/resend-code-button";
 import { Loader2 } from "lucide-react";
 import { VerifyState } from "../actions";
 
@@ -63,14 +64,9 @@ export function VerifyForm({ action, resendAction, email }: Props) {
         </div>
       </form>
 
-      <form action={resendAction} className="flex justify-center">
-        <button
-          type="submit"
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
-        >
-          Отправить код повторно
-        </button>
-      </form>
+      <div className="flex justify-center">
+        <ResendCodeButton action={resendAction} />
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Label } from "@/shared/ui/label";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { PasswordRequirements } from "@/shared/ui/password-requirements";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { CONSENT_URL, PRIVACY_URL, TERMS_URL } from "@/shared/lib/constants";
 
 // 1. Define the shape of your form fields
@@ -51,9 +52,12 @@ export function RegisterView({ action, initialData, buttonLabel = "Продол�
     values: initialData // Кладем начальные данные в стейт
   });
   const [password, setPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePdn, setAgreePdn] = useState(false);
+  const consentsAccepted = agreeTerms && agreePdn;
 
   return (
-    <form action={formAction} className="w-full space-y-5 animate-in fade-in duration-300">
+    <form action={formAction} className="w-full space-y-4 sm:space-y-5 animate-in fade-in duration-300">
 
       {state.errors?.form && (
         <div className="p-3 bg-destructive/10 text-destructive border border-destructive/20 rounded-md text-sm text-center">
@@ -61,7 +65,7 @@ export function RegisterView({ action, initialData, buttonLabel = "Продол�
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2">
           <Label htmlFor="givenName" className={cn(state.errors?.givenName && "text-destructive")}>
             Имя
@@ -187,55 +191,43 @@ export function RegisterView({ action, initialData, buttonLabel = "Продол�
         </>
       )}
 
-      <div className="space-y-3 pt-2">
-        <label className="flex items-start gap-2.5 cursor-pointer text-xs text-muted-foreground leading-relaxed">
-          <input
-            type="checkbox"
-            name="agreeTerms"
-            value="1"
-            disabled={isPending}
-            className={cn(
-              "mt-0.5 size-4 shrink-0 rounded border-input accent-primary",
-              state.errors?.agreeTerms && "outline outline-2 outline-destructive"
-            )}
-          />
-          <span>
-            Я принимаю{" "}
-            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-              пользовательское соглашение
-            </a>{" "}
-            и{" "}
-            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-              политику конфиденциальности
-            </a>
-            .
-          </span>
-        </label>
+      <div className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
+        <Checkbox
+          name="agreeTerms"
+          checked={agreeTerms}
+          onCheckedChange={setAgreeTerms}
+          disabled={isPending}
+          invalid={!!state.errors?.agreeTerms}
+        >
+          Я принимаю{" "}
+          <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            пользовательское соглашение
+          </a>{" "}
+          и{" "}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            политику конфиденциальности
+          </a>
+          .
+        </Checkbox>
         {state.errors?.agreeTerms && (
           <span className="text-[11px] font-medium text-destructive block leading-tight">
             {state.errors.agreeTerms}
           </span>
         )}
 
-        <label className="flex items-start gap-2.5 cursor-pointer text-xs text-muted-foreground leading-relaxed">
-          <input
-            type="checkbox"
-            name="agreePdn"
-            value="1"
-            disabled={isPending}
-            className={cn(
-              "mt-0.5 size-4 shrink-0 rounded border-input accent-primary",
-              state.errors?.agreePdn && "outline outline-2 outline-destructive"
-            )}
-          />
-          <span>
-            Я даю{" "}
-            <a href={CONSENT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-              согласие на обработку персональных данных
-            </a>{" "}
-            в соответствии с 152-ФЗ.
-          </span>
-        </label>
+        <Checkbox
+          name="agreePdn"
+          checked={agreePdn}
+          onCheckedChange={setAgreePdn}
+          disabled={isPending}
+          invalid={!!state.errors?.agreePdn}
+        >
+          Я даю{" "}
+          <a href={CONSENT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            согласие на обработку персональных данных
+          </a>{" "}
+          в соответствии с 152-ФЗ.
+        </Checkbox>
         {state.errors?.agreePdn && (
           <span className="text-[11px] font-medium text-destructive block leading-tight">
             {state.errors.agreePdn}
@@ -244,7 +236,7 @@ export function RegisterView({ action, initialData, buttonLabel = "Продол�
       </div>
 
       <div className="pt-2">
-        <Button type="submit" disabled={isPending} className="w-full">
+        <Button type="submit" disabled={isPending || !consentsAccepted} className="w-full">
           {isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
