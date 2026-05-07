@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -19,6 +20,18 @@ import { Separator } from "@/shared/ui/separator";
 import { SidebarUserCard } from "./sidebar-user-card";
 import { LogoutConfirmDialog } from "../logout-confirm-dialog";
 
+interface NavEntry {
+  path: string;
+  icon: LucideIcon;
+  label: string;
+}
+
+const NAV_ENTRIES: readonly NavEntry[] = [
+  { path: "/profile/security", icon: ShieldCheckIcon, label: "Безопасность" },
+  { path: "/profile/sessions", icon: MonitorSmartphone, label: "Сессии" },
+  { path: "/profile/settings", icon: Settings2, label: "Настройки" },
+];
+
 interface NavItemProps {
   href: string;
   icon: LucideIcon;
@@ -26,7 +39,7 @@ interface NavItemProps {
   isActive: boolean;
 }
 
-function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
+const NavItem = memo(function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
   return (
     <Link
       href={href}
@@ -37,30 +50,35 @@ function NavItem({ href, icon: Icon, label, isActive }: NavItemProps) {
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground/70")} />
+      <Icon className={cn("size-5", isActive ? "text-primary" : "text-muted-foreground/70")} />
       {label}
     </Link>
   );
-}
+});
+
+const withFrom = (path: string, from: string | null) => (from ? `${path}?from=${from}` : path);
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from");
+  const from = useSearchParams().get("from");
 
-  const withFrom = (path: string) => (from ? `${path}?from=${from}` : path);
-
-  const items: Array<Omit<NavItemProps, "isActive"> & { match: string }> = [
-    { href: withFrom("/profile/security"), icon: ShieldCheckIcon, label: "Безопасность", match: "/profile/security" },
-    { href: withFrom("/profile/sessions"), icon: MonitorSmartphone, label: "Сессии", match: "/profile/sessions" },
-    { href: withFrom("/profile/settings"), icon: Settings2, label: "Настройки", match: "/profile/settings" },
-  ];
-
+  const detailsHref = withFrom("/profile/details", from);
   const isDetailsActive = !!pathname?.startsWith("/profile/details");
+
+  const items = useMemo(
+    () =>
+      NAV_ENTRIES.map((entry) => ({
+        href: withFrom(entry.path, from),
+        icon: entry.icon,
+        label: entry.label,
+        isActive: !!pathname?.startsWith(entry.path),
+      })),
+    [from, pathname],
+  );
 
   return (
     <nav className="flex flex-col gap-2 h-full">
-      <Link href={withFrom("/profile/details")} className="block group">
+      <Link href={detailsHref} className="block group">
         <SidebarUserCard isActive={isDetailsActive} />
       </Link>
 
@@ -71,7 +89,7 @@ export function SidebarNav() {
             href={item.href}
             icon={item.icon}
             label={item.label}
-            isActive={!!pathname?.startsWith(item.match)}
+            isActive={item.isActive}
           />
         ))}
 
@@ -86,7 +104,7 @@ export function SidebarNav() {
             className="w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
           >
             <Link href={from}>
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="size-5" />
               Вернуться
             </Link>
           </Button>
@@ -100,9 +118,9 @@ export function SidebarNav() {
           className="group w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
         >
           <a href="/ui/console" target="_blank" rel="noopener noreferrer">
-            <Settings className="h-5 w-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
+            <Settings className="size-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
             <span className="flex-1 text-left">Админизация</span>
-            <ExternalLink className="h-4 w-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
+            <ExternalLink className="size-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
           </a>
         </Button>
 
@@ -111,7 +129,7 @@ export function SidebarNav() {
             variant="ghost"
             className="w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl font-medium"
           >
-            <LogOutIcon className="h-5 w-5" />
+            <LogOutIcon className="size-5" />
             Выйти
           </Button>
         </LogoutConfirmDialog>

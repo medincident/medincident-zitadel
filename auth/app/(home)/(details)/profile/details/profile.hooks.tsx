@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,6 @@ import { PersonalInfo } from "@/domain/profile/types";
 import { personalInfoSchema } from "@/domain/profile/schema";
 import { useProfileStore } from "../profile.store";
 
-// Импортируем наши новые Server Actions
 import { getProfileDataAction, updateProfileDataAction } from "./profile.actions";
 
 export type ProfileFormData = z.infer<typeof personalInfoSchema>;
@@ -21,40 +20,44 @@ export interface ProfileMessage {
   text: string;
 }
 
-const PROFILE_API_KEY = "profile-me"; // Локальный ключ для SWR
+const PROFILE_API_KEY = "profile-me";
 
-// --- 1. HOOK FOR FETCHING ---
+const FORM_DEFAULTS: ProfileFormData = {
+  firstName: "",
+  lastName: "",
+  middleName: "",
+  email: "",
+};
+
+const SWR_OPTIONS = {
+  revalidateOnFocus: false,
+  shouldRetryOnError: false,
+} as const;
+
 export function useProfileData() {
   const setProfileStore = useProfileStore((s) => s.setProfile);
-  
-  const { data, error, isLoading, isValidating, mutate } = useSWR<PersonalInfo>(
-    PROFILE_API_KEY,
-    getProfileDataAction, // Напрямую отдаем Server Action
-    {
-      revalidateOnFocus: false,
-      shouldRetryOnError: false,
-      onSuccess: (data: PersonalInfo) => {
-        setProfileStore({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          photoUrl: data.avatarUrl,
-          isEmailVerified: data.isEmailVerified,
-          email: data.email,
-        });
-      },
-    },
+
+  const onSuccess = useCallback(
+    (data: PersonalInfo) =>
+      setProfileStore({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        photoUrl: data.avatarUrl,
+        isEmailVerified: data.isEmailVerified,
+        email: data.email,
+      }),
+    [setProfileStore],
   );
 
-  return {
-    user: data,
-    isLoading,
-    isValidating,
-    isError: error,
-    mutate,
-  };
+  const { data, error, isLoading, isValidating, mutate } = useSWR<PersonalInfo>(
+    PROFILE_API_KEY,
+    getProfileDataAction,
+    { ...SWR_OPTIONS, onSuccess },
+  );
+
+  return { user: data, isLoading, isValidating, isError: error, mutate };
 }
 
-// --- 2. HOOK FOR MUTATION (UPDATE) ---
 export function useFormProfileDetails(user?: PersonalInfo) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -64,54 +67,45 @@ export function useFormProfileDetails(user?: PersonalInfo) {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(personalInfoSchema),
     mode: "onChange",
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      middleName: "",
-      email: "",
-    },
+    defaultValues: FORM_DEFAULTS,
   });
 
   useEffect(() => {
-    if (user) {
-      form.reset({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        middleName: user.middleName || "",
-        email: user.email,
-      });
-    }
+    if (!user) return;
+    form.reset({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName || "",
+      email: user.email,
+    });
   }, [user, form]);
 
-  const handleSubmit = form.handleSubmit((data) => {
-    setMessage(null);
+  const onSubmit = useMemo(
+    () =>
+      form.handleSubmit((data) => {
+        setMessage(null);
+        startTransition(async () => {
+          const result = await updateProfileDataAction(data);
 
-    startTransition(async () => {
-      // Вызываем Server Action вместо fetch PATCH
-      const result = await updateProfileDataAction(data);
+          if (result && !result.success) {
+            setMessage({ type: "error", text: result.error });
+            return;
+          }
 
-      if (result && !result.success) {
-        setMessage({ type: "error", text: result.error });
-        return;
-      }
+          await mutate(PROFILE_API_KEY, result.data, false);
+          router.refresh();
 
-      // Обновляем локальный кэш SWR новыми данными из ответа
-      await mutate(PROFILE_API_KEY, result.data, false);
+          // Сбрасываем isDirty, чтобы кнопка «Сохранить» задизейблилась.
+          form.reset({ ...form.getValues() });
 
-      // Обновляем Server Components (например, Sidebar)
-      router.refresh();
+          setMessage({ type: "success", text: "Данные успешно сохранены" });
+          setTimeout(() => setMessage(null), 3000);
+        });
+      }),
+    [form, mutate, router],
+  );
 
-      // Сбрасываем isDirty, чтобы кнопка "Сохранить" задизейблилась
-      form.reset({
-        ...form.getValues(),
-      });
-
-      setMessage({ type: "success", text: "Данные успешно сохранены" });
-      setTimeout(() => setMessage(null), 3000);
-    });
-  });
-
-  const handleCancel = () => {
+  const onCancel = useCallback(() => {
     setMessage(null);
     form.reset({
       firstName: user?.firstName ?? "",
@@ -119,22 +113,19 @@ export function useFormProfileDetails(user?: PersonalInfo) {
       middleName: user?.middleName ?? "",
       email: user?.email ?? "",
     });
-  };
+  }, [form, user]);
 
-  return {
-    state: {
+  const state = useMemo(
+    () => ({
       form,
       isSaving: isPending,
-      isDirty: form.formState.isDirty,
-      isValid: form.formState.isValid,
-      errors: form.formState.errors,
       message,
       isEmailVerified: user?.isEmailVerified ?? false,
-    },
-    actions: {
-      onSubmit: handleSubmit,
-      onCancel: handleCancel,
-      dismissMessage: () => setMessage(null),
-    },
-  };
+    }),
+    [form, isPending, message, user?.isEmailVerified],
+  );
+
+  const actions = useMemo(() => ({ onSubmit, onCancel }), [onSubmit, onCancel]);
+
+  return { state, actions };
 }

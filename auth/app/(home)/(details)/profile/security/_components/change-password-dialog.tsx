@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useState, useTransition } from "react";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/shared/ui/button";
@@ -41,48 +41,71 @@ const changePasswordSchema = z
 
 type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
+interface PasswordFieldProps {
+  id: string;
+  label: string;
+  autoComplete: "current-password" | "new-password";
+  errorMessage?: string;
+  registration: UseFormRegisterReturn;
+  children?: React.ReactNode;
+}
+
+function PasswordField({ id, label, autoComplete, errorMessage, registration, children }: PasswordFieldProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="password"
+        autoComplete={autoComplete}
+        className={cn(errorMessage && "border-destructive focus-visible:ring-destructive")}
+        {...registration}
+      />
+      {children}
+      {errorMessage && <p className="text-2xs text-destructive">{errorMessage}</p>}
+    </div>
+  );
+}
+
 export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<ChangePasswordForm>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ChangePasswordForm>({
     resolver: zodResolver(changePasswordSchema),
   });
 
   const newPasswordValue = watch("newPassword", "");
 
-  function onSubmit(data: ChangePasswordForm) {
-    startTransition(async () => {
-      const result = await changePasswordAction(data.currentPassword, data.newPassword);
+  const onSubmit = useCallback(
+    (data: ChangePasswordForm) => {
+      startTransition(async () => {
+        const result = await changePasswordAction(data.currentPassword, data.newPassword);
+        if (result.success) {
+          toast.success("Пароль успешно изменён");
+          setOpen(false);
+          reset();
+        } else {
+          toast.error(result.error || "Не удалось сменить пароль");
+        }
+      });
+    },
+    [reset],
+  );
 
-      if (result.success) {
-        toast.success("Пароль успешно изменён");
-        setOpen(false);
-        reset();
-      } else {
-        toast.error(result.error || "Не удалось сменить пароль");
-      }
-    });
-  }
-
-  function handleOpenChange(isOpen: boolean) {
-    setOpen(isOpen);
-    if (!isOpen) {
-      reset();
-    }
-  }
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      setOpen(isOpen);
+      if (!isOpen) reset();
+    },
+    [reset],
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2">
-          <KeyRound className="h-4 w-4" />
+          <KeyRound className="size-4" />
           Сменить пароль
         </Button>
       </DialogTrigger>
@@ -90,51 +113,34 @@ export function ChangePasswordDialog() {
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>Смена пароля</DialogTitle>
-          <DialogDescription>
-            Введите текущий пароль и задайте новый
-          </DialogDescription>
+          <DialogDescription>Введите текущий пароль и задайте новый</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Текущий пароль</Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              autoComplete="current-password"
-              className={cn(errors.currentPassword && "border-destructive focus-visible:ring-destructive")}
-              {...register("currentPassword")}
-            />
-            {errors.currentPassword && (
-              <p className="text-2xs text-destructive">{errors.currentPassword.message}</p>
-            )}
-          </div>
+          <PasswordField
+            id="currentPassword"
+            label="Текущий пароль"
+            autoComplete="current-password"
+            errorMessage={errors.currentPassword?.message}
+            registration={register("currentPassword")}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">Новый пароль</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              className={cn(errors.newPassword && "border-destructive focus-visible:ring-destructive")}
-              {...register("newPassword")}
-            />
+          <PasswordField
+            id="newPassword"
+            label="Новый пароль"
+            autoComplete="new-password"
+            registration={register("newPassword")}
+          >
             <PasswordRequirements password={newPasswordValue} />
-          </div>
+          </PasswordField>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              className={cn(errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
-              {...register("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <p className="text-2xs text-destructive">{errors.confirmPassword.message}</p>
-            )}
-          </div>
+          <PasswordField
+            id="confirmPassword"
+            label="Подтвердите пароль"
+            autoComplete="new-password"
+            errorMessage={errors.confirmPassword?.message}
+            registration={register("confirmPassword")}
+          />
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 animate-spin" />}

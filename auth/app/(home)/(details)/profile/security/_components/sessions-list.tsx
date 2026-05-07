@@ -1,22 +1,10 @@
+import { memo, useCallback, useMemo } from "react";
 import { UserSession } from "@/domain/profile/types";
 import { Button } from "@/shared/ui/button";
-import {
-  Laptop,
-  Smartphone,
-  LogOut,
-  Loader2,
-  Info,
-  Globe,
-  Clock,
-  Monitor,
-} from "lucide-react";
+import { Laptop, Smartphone, LogOut, Loader2, Info, Globe, Clock, Monitor } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { formatRelativeTime } from "@/shared/lib/relative-time";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/shared/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/shared/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -38,71 +26,111 @@ interface Props {
   onRevokeAllOthers: () => void;
 }
 
-function SessionInfoPopover({
+const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
+function isMobileDevice(name: string) {
+  const lower = name.toLowerCase();
+  return lower.includes("iphone") || lower.includes("android");
+}
+
+function DeviceIcon({ name, className }: { name: string; className?: string }) {
+  const Icon = isMobileDevice(name) ? Smartphone : Laptop;
+  return <Icon className={cn("size-5", className)} />;
+}
+
+function InfoButton({ tone = "muted" }: { tone?: "muted" | "primary" }) {
+  return (
+    <button
+      type="button"
+      title="Показать технические данные"
+      className={cn(
+        "transition-colors p-0.5 rounded-sm shrink-0 cursor-pointer outline-none",
+        tone === "primary"
+          ? "text-primary/40 hover:text-primary"
+          : "text-muted-foreground/40 hover:text-primary focus-visible:text-primary",
+      )}
+    >
+      <Info className="size-3.5" />
+    </button>
+  );
+}
+
+const SessionInfoPopover = memo(function SessionInfoPopover({
   session,
-  children
+  children,
 }: {
   session: UserSession;
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
+  const lastActiveLabel = useMemo(
+    () => new Date(session.lastActive).toLocaleString("ru-RU", DATE_FORMAT_OPTIONS),
+    [session.lastActive],
+  );
+
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        {children}
-      </PopoverTrigger>
-      <PopoverContent
-        side="bottom"
-        align="start"
-        className="w-90 p-3 space-y-2"
-      >
-        {/* User Agent */}
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent side="bottom" align="start" className="w-90 p-3 space-y-2">
         <div className="rounded-lg section-surface py-1.5 px-2.5 space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Monitor className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <Monitor className="size-3.5 text-muted-foreground shrink-0" />
               <span className="text-3xs text-muted-foreground uppercase tracking-wider font-medium">User Agent</span>
             </div>
             <CopyButton text={session.userAgent} />
           </div>
-          <p className="text-2xs font-mono text-muted-foreground leading-relaxed break-all select-all">{session.userAgent}</p>
+          <p className="text-2xs font-mono text-muted-foreground leading-relaxed break-all select-all">
+            {session.userAgent}
+          </p>
         </div>
 
-        {/* IP и Активность */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex items-center gap-2 p-2.5 rounded-lg section-surface">
-            <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
-              <p className="text-3xs text-muted-foreground uppercase tracking-wider font-medium">IP</p>
-              <p className="text-xs font-mono text-foreground truncate">{session.ip}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 p-2.5 rounded-lg section-surface">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
-              <p className="text-3xs text-muted-foreground uppercase tracking-wider font-medium">Активность</p>
-              <p className="text-xs text-foreground truncate">
-                {new Date(session.lastActive).toLocaleString("ru-RU", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
+          <InfoTile icon={Globe} label="IP" value={session.ip} mono />
+          <InfoTile icon={Clock} label="Активность" value={lastActiveLabel} />
         </div>
       </PopoverContent>
     </Popover>
   );
+});
+
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: typeof Globe;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 p-2.5 rounded-lg section-surface">
+      <Icon className="size-3.5 text-muted-foreground shrink-0" />
+      <div className="min-w-0">
+        <p className="text-3xs text-muted-foreground uppercase tracking-wider font-medium">{label}</p>
+        <p className={cn("text-xs text-foreground truncate", mono && "font-mono")}>{value}</p>
+      </div>
+    </div>
+  );
 }
 
-function RevokeAllConfirmDialog({ children, onConfirm }: { children: React.ReactNode; onConfirm: () => void }) {
+function RevokeAllConfirmDialog({
+  children,
+  onConfirm,
+}: {
+  children: React.ReactNode;
+  onConfirm: () => void;
+}) {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>Завершить все сессии</DialogTitle>
@@ -125,53 +153,78 @@ function RevokeAllConfirmDialog({ children, onConfirm }: { children: React.React
   );
 }
 
-const DeviceIcon = ({ name, className }: { name: string; className?: string }) => {
-  const isMobile = name.toLowerCase().includes("iphone") || name.toLowerCase().includes("android");
-  const Icon = isMobile ? Smartphone : Laptop;
-  return <Icon className={cn("w-5 h-5", className)} />;
-};
+const CurrentSessionCard = memo(function CurrentSessionCard({ session }: { session: UserSession }) {
+  return (
+    <div className="relative overflow-hidden p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-4">
+      <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-function SessionItem({
-  session,
-  activeActionId,
-  onRevoke,
-}: {
-  session: UserSession,
-  activeActionId: string | null,
-  onRevoke: (id: string) => void,
-}) {
-  const isRevokingThis = activeActionId === `sess_${session.id}`;
-  const isRevokingAll = activeActionId === "all";
-  const isLoading = isRevokingThis;
-  const isDisabled = isRevokingThis || isRevokingAll;
+      <div className="size-12 shrink-0 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+        <DeviceIcon name={session.deviceName} />
+      </div>
+
+      <div className="flex-1 z-10 min-w-0">
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-foreground truncate">{session.deviceName}</h4>
+          <SessionInfoPopover session={session}>
+            <InfoButton tone="primary" />
+          </SessionInfoPopover>
+        </div>
+
+        <div className="flex items-center gap-2 mt-1">
+          <span className="font-mono text-xs text-muted-foreground">{session.ip}</span>
+          <span className="size-1 rounded-full bg-primary shrink-0" />
+          <span className="text-primary font-medium text-xs">В сети</span>
+        </div>
+      </div>
+
+      <div className="z-10 ml-2 flex items-center gap-1">
+        <QrScannerButton variant="compact-responsive" />
+        <LogoutConfirmDialog>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Выйти"
+            title="Выйти"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:gap-2"
+          >
+            <span className="hidden sm:inline">Выйти</span>
+            <LogOut className="size-4" />
+          </Button>
+        </LogoutConfirmDialog>
+      </div>
+    </div>
+  );
+});
+
+interface SessionItemProps {
+  session: UserSession;
+  isLoading: boolean;
+  isDisabled: boolean;
+  onRevoke: (id: string) => void;
+}
+
+const SessionItem = memo(function SessionItem({ session, isLoading, isDisabled, onRevoke }: SessionItemProps) {
+  const handleRevoke = useCallback(() => onRevoke(session.id), [session.id, onRevoke]);
+  const lastActiveISO = useMemo(() => new Date(session.lastActive).toISOString(), [session.lastActive]);
+  const lastActiveTitle = useMemo(() => new Date(session.lastActive).toLocaleString("ru-RU"), [session.lastActive]);
 
   return (
     <div className="group flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all hover:border-border/80">
       <div className="flex items-center gap-4 overflow-hidden">
-        <div className="w-10 h-10 shrink-0 rounded-xl bg-muted/20 border border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+        <div className="size-10 shrink-0 rounded-xl bg-muted/20 border border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
           <DeviceIcon name={session.deviceName} />
         </div>
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="font-medium text-foreground text-sm truncate">
-              {session.deviceName}
-            </h4>
+            <h4 className="font-medium text-foreground text-sm truncate">{session.deviceName}</h4>
             <SessionInfoPopover session={session}>
-              <button
-                className="text-muted-foreground/40 hover:text-primary transition-colors cursor-pointer outline-none focus-visible:text-primary p-0.5 rounded-sm shrink-0"
-                title="Показать технические данные"
-              >
-                <Info className="w-3.5 h-3.5" />
-              </button>
+              <InfoButton />
             </SessionInfoPopover>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono">{session.ip}</span>
             <span className="text-muted-foreground/30">•</span>
-            <time
-              dateTime={new Date(session.lastActive).toISOString()}
-              title={new Date(session.lastActive).toLocaleString("ru-RU")}
-            >
+            <time dateTime={lastActiveISO} title={lastActiveTitle}>
               {formatRelativeTime(session.lastActive)}
             </time>
           </div>
@@ -181,94 +234,39 @@ function SessionItem({
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => onRevoke(session.id)}
+        onClick={handleRevoke}
         disabled={isDisabled}
-        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-lg shrink-0 ml-2"
+        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 size-9 rounded-lg shrink-0 ml-2"
         aria-label="Завершить сессию"
       >
-        {isLoading ? (
-          <Loader2 className="animate-spin" />
-        ) : (
-          <LogOut />
-        )}
+        {isLoading ? <Loader2 className="animate-spin" /> : <LogOut />}
       </Button>
     </div>
   );
-}
+});
 
-export function SessionsList({
-  sessions,
-  activeActionId,
-  onRevokeSession,
-  onRevokeAllOthers,
-}: Props) {
-  const currentSession = sessions.find((s) => s.isCurrent);
-  const otherSessions = sessions.filter((s) => !s.isCurrent);
+export function SessionsList({ sessions, activeActionId, onRevokeSession, onRevokeAllOthers }: Props) {
+  const { currentSession, otherSessions } = useMemo(
+    () => ({
+      currentSession: sessions.find((s) => s.isCurrent),
+      otherSessions: sessions.filter((s) => !s.isCurrent),
+    }),
+    [sessions],
+  );
+
   const isRevokingAll = activeActionId === "all";
 
   return (
     <div className="space-y-8">
-      {/* 1. Текущая сессия */}
       <div className="space-y-3">
-        <h4 className="section-label">
-          Текущая сессия
-        </h4>
-        {currentSession && (
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
-            <div className="w-12 h-12 shrink-0 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-              <DeviceIcon name={currentSession.deviceName} />
-            </div>
-
-            <div className="flex-1 z-10 min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-foreground truncate">
-                  {currentSession.deviceName}
-                </h4>
-                <SessionInfoPopover session={currentSession}>
-                  <button
-                    className="text-primary/40 hover:text-primary transition-colors cursor-pointer outline-none p-0.5 rounded-sm shrink-0"
-                    title="Показать технические данные"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                  </button>
-                </SessionInfoPopover>
-              </div>
-
-              <div className="flex items-center gap-2 mt-1">
-                <span className="font-mono text-xs text-muted-foreground">{currentSession.ip}</span>
-                <span className="w-1 h-1 rounded-full bg-primary shrink-0" />
-                <span className="text-primary font-medium text-xs">В сети</span>
-              </div>
-            </div>
-
-            <div className="z-10 ml-2 flex items-center gap-1">
-                <QrScannerButton variant="compact-responsive" />
-                <LogoutConfirmDialog>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Выйти"
-                        title="Выйти"
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:gap-2"
-                    >
-                        <span className="hidden sm:inline">Выйти</span>
-                        <LogOut className="size-4" />
-                    </Button>
-                </LogoutConfirmDialog>
-            </div>
-          </div>
-        )}
+        <h4 className="section-label">Текущая сессия</h4>
+        {currentSession && <CurrentSessionCard session={currentSession} />}
       </div>
 
-      {/* 2. Другие сессии */}
       {otherSessions.length > 0 && (
-         <div className="space-y-4">
-           <div className="flex items-center justify-between">
-            <h3 className="section-label">
-              Другие сессии
-            </h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="section-label">Другие сессии</h3>
             <RevokeAllConfirmDialog onConfirm={onRevokeAllOthers}>
               <Button
                 variant="outline"
@@ -276,25 +274,27 @@ export function SessionsList({
                 disabled={isRevokingAll}
                 className="h-8 text-xs border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 bg-transparent"
               >
-                {isRevokingAll && (
-                  <Loader2 className="mr-2 animate-spin" />
-                )}
+                {isRevokingAll && <Loader2 className="mr-2 animate-spin" />}
                 Завершить все ({otherSessions.length})
               </Button>
             </RevokeAllConfirmDialog>
           </div>
 
           <div className="flex flex-col gap-3">
-            {otherSessions.map((session) => (
-              <SessionItem
-                key={session.id}
-                session={session}
-                activeActionId={activeActionId}
-                onRevoke={onRevokeSession}
-              />
-            ))}
+            {otherSessions.map((session) => {
+              const isThis = activeActionId === `sess_${session.id}`;
+              return (
+                <SessionItem
+                  key={session.id}
+                  session={session}
+                  isLoading={isThis}
+                  isDisabled={isThis || isRevokingAll}
+                  onRevoke={onRevokeSession}
+                />
+              );
+            })}
           </div>
-         </div>
+        </div>
       )}
     </div>
   );

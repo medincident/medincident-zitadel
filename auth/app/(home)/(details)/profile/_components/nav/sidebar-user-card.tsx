@@ -1,9 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import { useShallow } from "zustand/react/shallow";
 import { useProfileStore } from "../../profile.store";
 import { useProfileData } from "../../details/profile.hooks";
 
@@ -11,15 +11,18 @@ export interface Props {
   isActive: boolean;
 }
 
-export function SidebarUserCard({ isActive }: Props) {
+// Атомарные селекторы — каждый возвращает примитив,
+// поэтому React делает Object.is сравнение и не дёргает рендер,
+// если конкретное поле не изменилось. Шире, чем useShallow на объекте.
+const selectFirstName = (s: ReturnType<typeof useProfileStore.getState>) => s.firstName;
+const selectLastName = (s: ReturnType<typeof useProfileStore.getState>) => s.lastName;
+const selectPhotoUrl = (s: ReturnType<typeof useProfileStore.getState>) => s.photoUrl;
+
+export const SidebarUserCard = memo(function SidebarUserCard({ isActive }: Props) {
   const { isLoading } = useProfileData();
-  const { firstName, lastName, photoUrl } = useProfileStore(
-    useShallow((state) => ({
-      firstName: state.firstName,
-      lastName: state.lastName,
-      photoUrl: state.photoUrl,
-    })),
-  );
+  const firstName = useProfileStore(selectFirstName);
+  const lastName = useProfileStore(selectLastName);
+  const photoUrl = useProfileStore(selectPhotoUrl);
 
   const hasData = !!(firstName || lastName);
   const showSkeleton = !hasData || isLoading;
@@ -61,4 +64,4 @@ export function SidebarUserCard({ isActive }: Props) {
       </div>
     </div>
   );
-}
+});

@@ -1,27 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { toast } from "sonner";
-import { LinkedAccountsStatus, UserSession } from "@/domain/profile/types";
 
-// Импортируем наши новые Server Actions
 import {
   getSessionsAction,
   getLinkedAccountsAction,
   revokeSessionAction,
   revokeAllOthersAction,
   toggleLinkedAccountAction,
-  linkProvider
+  linkProvider,
 } from "./security.actions";
 
 const KEYS = {
-  LINKS: "profile-links", // теперь это просто ключи для SWR, а не URL
+  LINKS: "profile-links",
   SESSIONS: "profile-sessions",
-};
+} as const;
 
 export function useLinkedAccounts() {
-  // SWR теперь вызывает Server Action вместо fetch
   const { data, error, isLoading } = useSWR(KEYS.LINKS, getLinkedAccountsAction);
   return { links: data, isLoading, isError: error };
 }
@@ -38,56 +35,56 @@ export function useSecurityMutations(links: any[] | undefined) {
   const [isPending, startTransition] = useTransition();
   const [activeActionId, setActiveActionId] = useState<SecurityActionId | null>(null);
 
-  const runAction = (
-    id: SecurityActionId, 
-    actionFn: () => Promise<any>,
-    keysToInvalidate: string[]
-  ) => {
-    setActiveActionId(id);
-    startTransition(async () => {
-      try {
-        const result = await actionFn();
+  const runAction = useCallback(
+    (id: SecurityActionId, actionFn: () => Promise<any>, keysToInvalidate: readonly string[]) => {
+      setActiveActionId(id);
+      startTransition(async () => {
+        try {
+          const result = await actionFn();
+          if (!result) return;
 
-        if (!result) {
-          return;
-        }
-
-        // В остальных случаях (отвязка, удаление сессий) просто обновляем UI
-        if (result.success) {
-            await Promise.all(keysToInvalidate.map(key => mutate(key)));
-        } else {
+          if (!result.success) {
             console.error("Action failed:", result.error);
             toast.error(result.error || "Не удалось выполнить действие");
-            await Promise.all(keysToInvalidate.map(key => mutate(key)));
+          }
+          await Promise.all(keysToInvalidate.map((key) => mutate(key)));
+        } catch (e) {
+          console.error("Unexpected error:", e);
+          toast.error("Произошла непредвиденная ошибка");
+        } finally {
+          setActiveActionId(null);
         }
-      } catch (e) {
-         console.error("Unexpected error:", e);
-         toast.error("Произошла непредвиденная ошибка");
-      } finally {
-        setActiveActionId(null);
-      }
-    });
-  };
+      });
+    },
+    [mutate],
+  );
 
-  return {
-    isMutating: isPending,
-    activeActionId,
-    actions: {
-      onToggleAccount: (provider: string) => {
-        const isConnected = links ? (links as any)[provider] : false;
-        
-        runAction(
-            provider as SecurityActionId, 
-            () => isConnected ? toggleLinkedAccountAction(provider, isConnected) : linkProvider(provider),
-            [KEYS.LINKS]
-        );
-      },
-      
-      onRevokeAllOthers: () => 
-          runAction("revoke_all", revokeAllOthersAction, [KEYS.SESSIONS]),
+  const onToggleAccount = useCallback(
+    (provider: string) => {
+      const isConnected = links ? (links as any)[provider] : false;
+      runAction(
+        provider as SecurityActionId,
+        () => (isConnected ? toggleLinkedAccountAction(provider, isConnected) : linkProvider(provider)),
+        [KEYS.LINKS],
+      );
+    },
+    [links, runAction],
+  );
 
-      onRevokeSession: (id: string) => 
-          runAction(`sess_${id}`, () => revokeSessionAction(id), [KEYS.SESSIONS]),
-    }
-  };
+  const onRevokeAllOthers = useCallback(
+    () => runAction("revoke_all", revokeAllOthersAction, [KEYS.SESSIONS]),
+    [runAction],
+  );
+
+  const onRevokeSession = useCallback(
+    (id: string) => runAction(`sess_${id}`, () => revokeSessionAction(id), [KEYS.SESSIONS]),
+    [runAction],
+  );
+
+  const actions = useMemo(
+    () => ({ onToggleAccount, onRevokeAllOthers, onRevokeSession }),
+    [onToggleAccount, onRevokeAllOthers, onRevokeSession],
+  );
+
+  return { isMutating: isPending, activeActionId, actions };
 }

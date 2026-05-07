@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import {
@@ -18,10 +18,10 @@ import { logoutClient } from "@/app/(home)/(auth)/login/login.hooks";
 export function LogoutConfirmDialog({ children }: { children: React.ReactNode }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
     await logoutClient();
-  };
+  }, []);
 
   return (
     <Dialog>

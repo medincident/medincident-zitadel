@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback, useMemo } from "react";
 import { PersonalInfo } from "@/domain/profile/types";
 import { EditableAvatar } from "./editable-avatar";
 import { Check, UserRoundCog } from "lucide-react";
@@ -7,17 +8,40 @@ import { Button } from "@/shared/ui/button";
 import { CopyButton } from "@/shared/ui/copy-button";
 import { startZitadelSignIn } from "@/services/zitadel/user/sign-in";
 
-export function UserHeaderCard({ user }: { user: PersonalInfo }) {
-  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
-  const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ");
+interface CopyContentProps {
+  copied: boolean;
+  id: string;
+}
 
-  const handleSwitchAccount = () => {
-    startZitadelSignIn("select_account");
-  };
+const CopyContent = memo(function CopyContent({ copied, id }: CopyContentProps) {
+  return (
+    <>
+      {copied && <Check className="size-3.5 shrink-0 text-success" />}
+      <span>{copied ? "Скопировано" : id}</span>
+    </>
+  );
+});
+
+const handleSwitchAccount = () => startZitadelSignIn("select_account");
+
+export const UserHeaderCard = memo(function UserHeaderCard({ user }: { user: PersonalInfo }) {
+  const initials = useMemo(
+    () => `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase(),
+    [user.firstName, user.lastName],
+  );
+  const fullName = useMemo(
+    () => [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" "),
+    [user.firstName, user.middleName, user.lastName],
+  );
+
+  const renderCopy = useCallback(
+    ({ copied }: { copied: boolean }) => <CopyContent copied={copied} id={user.id} />,
+    [user.id],
+  );
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-primary/5 border border-primary/20 p-5">
-      <div className="pointer-events-none absolute -top-8 -right-8 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+      <div className="pointer-events-none absolute -top-8 -right-8 size-40 rounded-full bg-primary/10 blur-2xl" />
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-48 rounded-full bg-primary/5 blur-2xl" />
 
       <div className="flex items-center gap-5">
@@ -33,21 +57,14 @@ export function UserHeaderCard({ user }: { user: PersonalInfo }) {
           <h2 className="text-xl font-bold text-foreground leading-tight truncate">{fullName}</h2>
 
           {user.position && (
-            <p className="text-sm text-muted-foreground font-medium">
-              {user.position}
-            </p>
+            <p className="text-sm text-muted-foreground font-medium">{user.position}</p>
           )}
 
           <CopyButton
             text={user.id}
             className="flex items-center gap-1.5 font-mono text-xs rounded-md px-1.5 py-0.5 -ml-1.5 text-muted-foreground/60 hover:text-muted-foreground hover:bg-primary/10 transition-all duration-150 active:scale-95 cursor-pointer"
           >
-            {({ copied }) => (
-              <>
-                {copied && <Check className="w-3.5 h-3.5 shrink-0 text-success" />}
-                <span>{copied ? "Скопировано" : user.id}</span>
-              </>
-            )}
+            {renderCopy}
           </CopyButton>
         </div>
 
@@ -65,4 +82,4 @@ export function UserHeaderCard({ user }: { user: PersonalInfo }) {
       </div>
     </div>
   );
-}
+});

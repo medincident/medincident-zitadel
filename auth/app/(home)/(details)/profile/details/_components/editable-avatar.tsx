@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition, useEffect } from "react";
+import { useCallback, useState, useRef, useTransition, useEffect } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/ui/avatar";
 import { uploadAvatarAction } from "../profile.actions";
@@ -68,76 +68,73 @@ export function EditableAvatar({ currentAvatarUrl, initials }: EditableAvatarPro
     };
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
 
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-
-    startTransition(async () => {
-      try {
-        const compressed = file.size > MAX_AVATAR_SIZE
-          ? await compressImage(file)
-          : file;
-
-        if (compressed.size > MAX_AVATAR_SIZE) {
-          toast.error("Не удалось сжать изображение до 512 КБ. Выберите файл поменьше");
-          return;
-        }
-
-        const objectUrl = URL.createObjectURL(compressed);
-        objectUrlRef.current = objectUrl;
-        setPreviewUrl(objectUrl);
-        setProfile({ photoUrl: objectUrl });
-
-        const formData = new FormData();
-        formData.append("avatar", compressed, file.name);
-
-        const result = await uploadAvatarAction(formData);
-
-        if (!result?.success) {
-          setPreviewUrl(currentAvatarUrl);
-          setProfile({ photoUrl: currentAvatarUrl ?? null });
-          console.error("Ошибка при загрузке аватара:", result?.error);
-          toast.error(result?.error || "Ошибка загрузки");
-        }
-
-        if (objectUrlRef.current === objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-          objectUrlRef.current = null;
-        }
-      } catch {
-        toast.error("Не удалось обработать изображение");
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
       }
-    });
-  };
+
+      startTransition(async () => {
+        try {
+          const compressed = file.size > MAX_AVATAR_SIZE ? await compressImage(file) : file;
+
+          if (compressed.size > MAX_AVATAR_SIZE) {
+            toast.error("Не удалось сжать изображение до 512 КБ. Выберите файл поменьше");
+            return;
+          }
+
+          const objectUrl = URL.createObjectURL(compressed);
+          objectUrlRef.current = objectUrl;
+          setPreviewUrl(objectUrl);
+          setProfile({ photoUrl: objectUrl });
+
+          const formData = new FormData();
+          formData.append("avatar", compressed, file.name);
+
+          const result = await uploadAvatarAction(formData);
+
+          if (!result?.success) {
+            setPreviewUrl(currentAvatarUrl);
+            setProfile({ photoUrl: currentAvatarUrl ?? null });
+            console.error("Ошибка при загрузке аватара:", result?.error);
+            toast.error(result?.error || "Ошибка загрузки");
+          }
+
+          if (objectUrlRef.current === objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrlRef.current = null;
+          }
+        } catch {
+          toast.error("Не удалось обработать изображение");
+        }
+      });
+    },
+    [currentAvatarUrl, setProfile],
+  );
+
+  const triggerFileInput = useCallback(() => fileInputRef.current?.click(), []);
 
   return (
-    <div
-      className="relative w-16 h-16 group/edit cursor-pointer rounded-full"
-      onClick={() => fileInputRef.current?.click()}
-    >
-      <Avatar className="w-16 h-16 border border-border">
+    <div className="relative size-16 group/edit cursor-pointer rounded-full" onClick={triggerFileInput}>
+      <Avatar className="size-16 border border-border">
         <AvatarImage src={previewUrl} alt="Аватар пользователя" className="object-cover" />
-        <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-          {initials}
-        </AvatarFallback>
+        <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">{initials}</AvatarFallback>
       </Avatar>
 
-      <div className={cn(
-        "absolute inset-0 rounded-full flex items-center justify-center",
-        "transition-all duration-200 ease-in-out",
-        isPending
-          ? "bg-black/80 opacity-100"
-          : "bg-black/50 opacity-0 group-hover/edit:opacity-100",
-      )}>
+      <div
+        className={cn(
+          "absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out",
+          isPending ? "bg-black/80 opacity-100" : "bg-black/50 opacity-0 group-hover/edit:opacity-100",
+        )}
+      >
         {isPending ? (
-          <Loader2 className="w-5 h-5 text-white/80 animate-spin" />
+          <Loader2 className="size-5 text-white/80 animate-spin" />
         ) : (
-          <Camera className="w-5 h-5 text-white/70 transition-transform duration-300 ease-in-out group-hover/edit:scale-110" />
+          <Camera className="size-5 text-white/70 transition-transform duration-300 ease-in-out group-hover/edit:scale-110" />
         )}
       </div>
 
