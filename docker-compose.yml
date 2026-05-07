@@ -117,8 +117,6 @@ services:
       postgres:
         condition: service_healthy
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
       - traefik.enable=true
       - traefik.docker.network=zitadel
 
@@ -262,6 +260,7 @@ services:
     labels:
       <<: *zitadel-traefik-labels
       com.centurylinklabs.watchtower.enable: "true"
+      com.centurylinklabs.watchtower.scope: "medincident-zitadel"
     logging:
       driver: "json-file"
       options:
@@ -330,21 +329,22 @@ services:
 
   watchtower:
     image: containrrr/watchtower:latest
+    container_name: medincident-zitadel-watchtower
     restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       REPO_USER: ${GHCR_USERNAME}
       REPO_PASS: ${GHCR_TOKEN}
       DOCKER_API_VERSION: "1.40"
-      # Poll interval in seconds (default: 1h)
-      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-3600}
-      # Only update containers that have the watchtower label
+      WATCHTOWER_SCOPE: "medincident-zitadel"
       WATCHTOWER_LABEL_ENABLE: "true"
-      # Send notifications (optional, set WATCHTOWER_NOTIFICATION_URL)
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-3600}
       WATCHTOWER_NOTIFICATIONS: ${WATCHTOWER_NOTIFICATIONS:-}
       WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
-      TZ: ${TZ:-UTC}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      TZ: ${TZ:-Europe/Moscow}
     networks:
       - zitadel
     logging:
