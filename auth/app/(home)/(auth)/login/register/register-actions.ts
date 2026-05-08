@@ -7,8 +7,6 @@ import {
   updateUserMetadata,
   updateUserMiddleName,
 } from "@/services/zitadel/api";
-import { userService } from "@/services/grpc/client";
-import { ClientError } from "nice-grpc";
 import {
   getIdpIntentCookie,
   deleteIdpIntentCookie,

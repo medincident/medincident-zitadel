@@ -1,7 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { UserSession, LinkedAccountsStatus } from "@/domain/profile/types";
+import { UserSession } from "@/domain/profile/types";
 import { requireValidSession } from "@/services/zitadel/session";
 import { deleteSession, deleteUserLink, getActiveIdps as getActiveIdps, searchUserLinks, searchUserSessions, startIdpIntent, changeUserPassword, retrieveIdpIntent, addIdpLinkToUser, registerTotp, verifyTotpRegistration, removeTotp, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
 import { env } from "@/shared/config/env";

@@ -31,15 +31,11 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
     redirect("/profile");
   }
 
-  // Проверка OIDC request содержит prompt=login или prompt=select_account
-  let forceLogin = false;
+  // Проверка OIDC request содержит prompt=select_account
   let forceSelectAccount = false;
   const authReqResult = await getAuthRequest(requestId);
   if (authReqResult.success) {
     const prompts = authReqResult.data.authRequest?.prompt || [];
-    forceLogin = prompts.some((p: string) =>
-      p === "PROMPT_LOGIN" || p === "login"
-    );
     forceSelectAccount = prompts.some((p: string) =>
       p === "PROMPT_SELECT_ACCOUNT" || p === "select_account"
     );

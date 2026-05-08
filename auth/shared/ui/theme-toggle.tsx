@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -25,11 +25,17 @@ function nextTheme(current: string | undefined): ThemeValue {
   return order[(idx + 1) % order.length];
 }
 
+const subscribe = () => () => {};
+const useIsMounted = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
+
 export function ThemeToggle({ variant = 'segmented', className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
 
   if (variant === 'icon') {
     // До монтирования рисуем нейтральную иконку — без флика и без рассинхронизации с сервером.

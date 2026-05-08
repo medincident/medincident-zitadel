@@ -4,7 +4,7 @@
 import { redirect } from "next/navigation";
 
 // Импортируем ваши методы для работы с пользователями и сессиями
-import { createHumanUser, createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
+import { createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
 import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
 import { setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
 import { env } from "@/shared/config/env";

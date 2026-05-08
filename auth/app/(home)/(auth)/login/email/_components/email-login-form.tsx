@@ -8,7 +8,6 @@ import { Label } from "@/shared/ui/label";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { EmailLoginState } from "../actions";
-import { env } from "@/shared/config/env";
 
 interface Props {
   action: (state: EmailLoginState, formData: FormData) => Promise<EmailLoginState>;

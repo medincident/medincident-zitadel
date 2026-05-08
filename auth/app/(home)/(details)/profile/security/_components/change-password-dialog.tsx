@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useTransition } from "react";
-import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import { useForm, useWatch, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/shared/ui/button";
@@ -71,11 +71,11 @@ export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ChangePasswordForm>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ChangePasswordForm>({
     resolver: zodResolver(changePasswordSchema),
   });
 
-  const newPasswordValue = watch("newPassword", "");
+  const newPasswordValue = useWatch({ control, name: "newPassword" }) ?? "";
 
   const onSubmit = useCallback(
     (data: ChangePasswordForm) => {
