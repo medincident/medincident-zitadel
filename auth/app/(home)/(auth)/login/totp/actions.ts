@@ -23,7 +23,7 @@ export async function verifyTotpLoginAction(
     return { errors: { form: "Сессия входа истекла. Войдите заново.", expired: true } };
   }
 
-  const { sessionId, sessionToken, loginName, requestId } = pending;
+  const { sessionId, sessionToken, loginName, requestId, userId } = pending;
 
   // По документации sessionToken устарел и игнорируется, но передаём для совместимости
   const res = await updateSession(sessionId, sessionToken, { totp: { code } });
@@ -43,7 +43,8 @@ export async function verifyTotpLoginAction(
   await finishAuth(
     { sessionId, sessionToken: newToken, session },
     requestId,
-    loginName
+    loginName,
+    userId,
   );
 
   return { errors: {} };

@@ -90,6 +90,6 @@ export async function verifyEmailAction(
     loginName = sessionCookie.loginName;
   }
 
-  await finishAuth(sessionData, requestId, loginName);
+  await finishAuth(sessionData, requestId, loginName, userId);
   return { errors: {} };
 }

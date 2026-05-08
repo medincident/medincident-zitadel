@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { createSessionWithPassword, searchUserByEmail, searchUserByLoginName, resendEmailVerification, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
-import { setRegFlowCookie, setTotpPendingCookie } from "../_lib/reg-flow";
+import { createSessionWithPassword, searchUserByEmail, searchUserByLoginName, resendEmailVerification } from "@/services/zitadel/api";
+import { setRegFlowCookie } from "../_lib/reg-flow";
 import { finishAuth } from "../callback/success/actions";
 
 export interface EmailLoginState {
@@ -61,12 +61,12 @@ export async function loginWithEmailAction(
   const { sessionId, sessionToken } = sessionRes.data;
   const userEmail = user?.human?.email?.email ?? (isEmail ? identifier : "");
 
-  try {
-    // Проверяем, подтверждён ли email пользователя (user уже получен выше).
-    const isVerified = user?.human?.email?.isVerified ?? true;
+  // Проверяем, подтверждён ли email пользователя (user уже получен выше).
+  const isVerified = user?.human?.email?.isVerified ?? true;
 
-    if (!isVerified && user?.userId) {
-      // Email не подтверждён — отправляем код и показываем экран верификации
+  if (!isVerified && user?.userId) {
+    // Email не подтверждён — отправляем код и показываем экран верификации
+    try {
       await resendEmailVerification(user.userId);
       await setRegFlowCookie({
         givenName: user.human?.profile?.givenName ?? "",
@@ -82,30 +82,12 @@ export async function loginWithEmailAction(
       const params = new URLSearchParams();
       if (requestId) params.set("requestId", requestId);
       redirect(`/login/email/verify?${params}`);
+    } catch (error) {
+      if (isRedirectError(error)) throw error;
     }
-
-    // Если у юзера включён TOTP — запрашиваем код перед завершением входа
-    if (user?.userId) {
-      const methods = await listAuthMethods(user.userId);
-      if (methods.success && hasTotpMethod(methods.data.authMethodTypes)) {
-        await setTotpPendingCookie({
-          sessionId,
-          sessionToken,
-          userId: user.userId,
-          loginName,
-          requestId,
-        });
-        const params = new URLSearchParams();
-        if (requestId) params.set("requestId", requestId);
-        redirect(`/login/totp?${params}`);
-      }
-    }
-  } catch (error) {
-    if (isRedirectError(error)) throw error;
-    // Если проверка не удалась — продолжаем без неё (не блокируем вход)
   }
 
-  await finishAuth(sessionRes.data, requestId, loginName);
+  await finishAuth(sessionRes.data, requestId, loginName, user?.userId);
   // finishAuth вызывает redirect() — до этой строки не доходим
   return { errors: {}, values: { email: identifier } };
 }

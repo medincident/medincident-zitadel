@@ -4,10 +4,30 @@
 import { redirect } from "next/navigation";
 
 // Импортируем ваши методы для работы с пользователями и сессиями
-import { createHumanUser, createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest } from "@/services/zitadel/api";
+import { createHumanUser, createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
 import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
-import { setIdpIntentCookie } from "../../_lib/reg-flow";
+import { setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
 import { env } from "@/shared/config/env";
+
+/**
+ * Универсальный TOTP-гейт. Возвращает true — значит сессия ещё не подтвердила
+ * TOTP-фактор, а у пользователя он включён. Вызывающий должен сделать
+ * setTotpPendingCookie + redirect("/login/totp").
+ *
+ * Skip-условия:
+ *  - userId неизвестен (до пользователя не дошли — гейт нечего проверять)
+ *  - session.factors.totp присутствует (TOTP уже верифицирован в этой сессии,
+ *    например после verifyTotpLoginAction → updateSession)
+ */
+async function requiresTotpStep(
+  userId: string | undefined,
+  session: { factors?: { totp?: unknown } } | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+  if (session?.factors?.totp) return false;
+  const methods = await listAuthMethods(userId);
+  return methods.success && hasTotpMethod(methods.data.authMethodTypes);
+}
 
 export async function completeAuthFlow(sessionId: string, sessionToken: string, requestId: string): Promise<string> {
   const result = await completeAuthRequest(requestId, sessionId, sessionToken);
@@ -26,12 +46,43 @@ export async function completeAuthFlow(sessionId: string, sessionToken: string, 
   return callbackUrl;
 }
 /**
- * Универсальная функция финализации авторизации
- * Теперь принимает полный объект data, возвращаемый API Zitadel.
+ * Универсальная функция финализации авторизации.
+ *
+ * Принимает данные созданной Zitadel-сессии (sessionId/sessionToken и опционально
+ * полный session object с factors). Поддерживает явный userId — нужен для
+ * TOTP-гейта в путях, где session.factors.user может быть пустым.
+ *
+ * Шаги:
+ *  1. TOTP gate: если у юзера включён TOTP, а в сессии его ещё нет — кладём
+ *     pending-cookie и редиректим на /login/totp.
+ *  2. Сохраняем сессию в cookie (мульти-аккаунт + auto-complete).
+ *  3. Развилка: requestId → завершаем OIDC/SAML auth-request, иначе → /profile.
  */
-export async function finishAuth(sessionResData: any, requestId?: string, loginNameOverride?: string) {
+export async function finishAuth(
+  sessionResData: { sessionId: string; sessionToken: string; session?: any },
+  requestId?: string,
+  loginNameOverride?: string,
+  userId?: string,
+) {
   const sessionDetails = sessionResData.session || {};
   const userFactors = sessionDetails.factors?.user || {};
+  const effectiveUserId = userId || userFactors.id;
+  const loginName = loginNameOverride || userFactors.loginName || "unknown";
+
+  if (await requiresTotpStep(effectiveUserId, sessionDetails)) {
+    console.log("[auth:finishAuth] TOTP required: userId=%s, sessionId=%s",
+      effectiveUserId, sessionResData.sessionId);
+    await setTotpPendingCookie({
+      sessionId: sessionResData.sessionId,
+      sessionToken: sessionResData.sessionToken,
+      userId: effectiveUserId!,
+      loginName,
+      requestId,
+    });
+    const params = new URLSearchParams();
+    if (requestId) params.set("requestId", requestId);
+    redirect(`/login/totp${params.toString() ? `?${params}` : ""}`);
+  }
 
   const newSessionCookie = {
     id: sessionResData.sessionId,
@@ -39,7 +90,7 @@ export async function finishAuth(sessionResData: any, requestId?: string, loginN
     creationTs: new Date(sessionDetails.creationDate || Date.now()).getTime().toString(),
     expirationTs: new Date(sessionDetails.expirationDate || Date.now() + 86400000).getTime().toString(),
     changeTs: new Date(sessionDetails.changeDate || Date.now()).getTime().toString(),
-    loginName: loginNameOverride || userFactors.loginName || "unknown",
+    loginName,
     organization: userFactors.organizationId || "",
     requestId: requestId,
   };
@@ -53,7 +104,7 @@ export async function finishAuth(sessionResData: any, requestId?: string, loginN
   console.log("[auth:finishAuth] Сессия сохранена в cookie: id=%s, loginName=%s",
     newSessionCookie.id, newSessionCookie.loginName);
 
-  // 2. РАЗВИЛКА ЛОГИНА
+  // РАЗВИЛКА ЛОГИНА
   if (requestId) {
     console.log("[auth:finishAuth] OIDC/SAML ROUTE: sessionId=%s, requestId=%s", sessionResData.sessionId, requestId);
     const redirectUrl = await completeAuthFlow(sessionResData.sessionId, sessionResData.sessionToken, requestId);
@@ -94,7 +145,7 @@ export async function handleLoginAction(userId: string, intentId: string, intent
     throw new Error("Ошибка при создании сессии. Ответ ZITADEL: " + JSON.stringify(sessionRes));
   }
 
-  await finishAuth(sessionRes.data, requestId);
+  await finishAuth(sessionRes.data, requestId, undefined, userId);
 }
 
 export async function saveIdpIntentAndRedirectAction(formData: FormData) {
@@ -132,7 +183,7 @@ export async function handleLinkAction(targetUserId: string, intentId: string, i
     throw new Error("Аккаунт привязан, но не удалось создать сессию");
   }
 
-  await finishAuth(sessionRes.data, requestId);
+  await finishAuth(sessionRes.data, requestId, undefined, targetUserId);
 }
 
 export async function selectAccountAction(sessionId: string, sessionToken: string, requestId: string) {
