@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import {
+  getUserById,
   requestPasswordReset,
   searchUserByEmail,
+  setHumanEmailVerified,
   setPasswordWithCode,
 } from "@/services/zitadel/api";
 import {
@@ -11,6 +13,7 @@ import {
   getPasswordResetCookie,
   setPasswordResetCookie,
 } from "../_lib/reg-flow";
+import { testPasswordValid } from "@/domain/auth/password-policy";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Zitadel password_reset code = 6 alphanumeric uppercase chars (например `X5GAL0`).
@@ -75,19 +78,9 @@ export async function submitResetAction(
   if (!CODE_RE.test(code)) {
     errors.code = "Введите код из письма (6 символов)";
   }
-  // Политика пароля — та же, что и при регистрации.
-  if (!password || password.length < 8) {
-    errors.password = "Пароль должен содержать не менее 8 символов";
-  } else if (password.length > 70) {
-    errors.password = "Пароль должен быть не более 70 символов";
-  } else if (!/[A-ZА-ЯЁ]/.test(password)) {
-    errors.password = "Пароль должен содержать заглавную букву";
-  } else if (!/[a-zа-яё]/.test(password)) {
-    errors.password = "Пароль должен содержать строчную букву";
-  } else if (!/\d/.test(password)) {
-    errors.password = "Пароль должен содержать цифру";
-  } else if (!/[^a-zA-Zа-яА-ЯёЁ0-9\s]/.test(password)) {
-    errors.password = "Пароль должен содержать символ или знак пунктуации";
+  const passwordValidation = testPasswordValid(password);
+  if (!passwordValidation.ok) {
+    errors.password = passwordValidation.error;
   }
   if (password !== confirm) {
     errors.confirm = "Пароли не совпадают";
@@ -115,6 +108,20 @@ export async function submitResetAction(
       return { errors: { code: "Код неверный или истёк. Запросите новый." } };
     }
     return { errors: { form: "Не удалось сменить пароль. Попробуйте снова." } };
+  }
+
+  const userRes = await getUserById(flow.userId);
+  const email = userRes.success
+    ? userRes.data?.user?.human?.email?.email
+    : undefined;
+  if (email) {
+    const verifyRes = await setHumanEmailVerified(flow.userId, email);
+    if (!verifyRes.success) {
+      console.error(
+        "[forgot-password] setHumanEmailVerified failed: userId=%s",
+        flow.userId,
+      );
+    }
   }
 
   await deletePasswordResetCookie();

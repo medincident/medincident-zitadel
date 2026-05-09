@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 // Импортируем ваши методы для работы с пользователями и сессиями
 import { createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
 import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
-import { setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
+import { extractIdpIntent, setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
 import { env } from "@/shared/config/env";
 
 /**
@@ -155,7 +155,9 @@ export async function saveIdpIntentAndRedirectAction(formData: FormData) {
   const idpInformationRaw = formData.get("idpInformation") as string | null;
   const idpInformation = idpInformationRaw ? JSON.parse(idpInformationRaw) : undefined;
 
-  await setIdpIntentCookie({ intentId, intentToken, idpInformation, requestId });
+  await setIdpIntentCookie(
+    await extractIdpIntent({ intentId, intentToken, idpInformation, requestId }),
+  );
 
   const regParams = new URLSearchParams({ source: "idp" });
   if (requestId) regParams.set("requestId", requestId);

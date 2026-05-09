@@ -2,38 +2,7 @@
 
 import { cn } from "@/shared/lib/utils";
 import { Check, X } from "lucide-react";
-
-interface Rule {
-  label: string;
-  test: (password: string) => boolean;
-}
-
-const rules: Rule[] = [
-  {
-    label: "Не менее 8 символов",
-    test: (p) => p.length >= 8,
-  },
-  {
-    label: "Не более 70 символов",
-    test: (p) => p.length <= 70,
-  },
-  {
-    label: "Содержит заглавную букву",
-    test: (p) => /[A-ZА-ЯЁ]/.test(p),
-  },
-  {
-    label: "Содержит строчную букву",
-    test: (p) => /[a-zа-яё]/.test(p),
-  },
-  {
-    label: "Содержит цифру",
-    test: (p) => /\d/.test(p),
-  },
-  {
-    label: "Содержит символ или знак пунктуации",
-    test: (p) => /[^a-zA-Zа-яА-ЯёЁ0-9\s]/.test(p),
-  },
-];
+import { PASSWORD_RULES } from "@/domain/auth/password-policy";
 
 interface PasswordRequirementsProps {
   password: string;
@@ -43,7 +12,7 @@ interface PasswordRequirementsProps {
 export function PasswordRequirements({ password, className }: PasswordRequirementsProps) {
   return (
     <ul className={cn("space-y-1", className)}>
-      {rules.map((rule) => {
+      {PASSWORD_RULES.map((rule) => {
         const passed = password.length > 0 && rule.test(password);
         return (
           <li
@@ -70,8 +39,4 @@ export function PasswordRequirements({ password, className }: PasswordRequiremen
       })}
     </ul>
   );
-}
-
-export function validatePassword(password: string): boolean {
-  return rules.every((rule) => rule.test(password));
 }

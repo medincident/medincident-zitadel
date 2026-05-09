@@ -5,6 +5,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import {
   createHumanUser,
   createSession,
+  createSessionWithPassword,
   updateUserMetadata,
   updateUserMiddleName,
 } from "@/services/zitadel/api";
@@ -15,6 +16,7 @@ import {
 } from "../_lib/reg-flow";
 import { env } from "@/shared/config/env";
 import { nameFieldsSchema } from "@/domain/profile/schema";
+import { testPasswordValid } from "@/domain/auth/password-policy";
 import type { RegisterFormState } from "./_components/register-view";
 
 
@@ -157,22 +159,20 @@ export async function continueRegisterIdp(
   if (!intent) return { success: false, errors: { form: "Сессия устарела. Войдите снова." }, values };
 
   try {
-    const rawInfo = intent.idpInformation?.rawInformation ?? {};
     const requestBody = {
-      username: rawInfo.preferred_username ?? email,
+      username: intent.prefill.preferredUsername ?? email,
       profile: {
         givenName,
         familyName,
         displayName: `${givenName} ${familyName}`,
-        preferredLanguage:
-          rawInfo.preferredLanguage === "und" ? "ru" : (rawInfo.preferredLanguage ?? "ru"),
+        preferredLanguage: intent.prefill.preferredLanguage ?? "ru",
       },
       email: { email, sendCode: {} },
       idpLinks: [
         {
-          idpId: intent.idpInformation?.idpId,
-          userId: intent.idpInformation?.userId,
-          userName: intent.idpInformation?.userName,
+          idpId: intent.idp.idpId,
+          userId: intent.idp.idpUserId,
+          userName: intent.idp.idpUserName,
         },
       ],
     };
@@ -247,20 +247,9 @@ export async function continueRegisterEmail(
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = "Введите корректный email адрес";
   }
-  if (!password || password.length < 1) {
-    errors.password = "Введите пароль";
-  } else if (password.length < 8) {
-    errors.password = "Пароль должен содержать не менее 8 символов";
-  } else if (password.length > 70) {
-    errors.password = "Пароль должен быть не более 70 символов";
-  } else if (!/[A-ZА-ЯЁ]/.test(password)) {
-    errors.password = "Пароль должен содержать заглавную букву";
-  } else if (!/[a-zа-яё]/.test(password)) {
-    errors.password = "Пароль должен содержать строчную букву";
-  } else if (!/\d/.test(password)) {
-    errors.password = "Пароль должен содержать цифру";
-  } else if (!/[^a-zA-Zа-яА-ЯёЁ0-9\s]/.test(password)) {
-    errors.password = "Пароль должен содержать символ или знак пунктуации";
+  const passwordValidation = testPasswordValid(password);
+  if (!passwordValidation.ok) {
+    errors.password = passwordValidation.error;
   }
   if (password !== confirm) {
     errors.confirm = "Пароли не совпадают";
@@ -291,13 +280,24 @@ export async function continueRegisterEmail(
     if (middleName) await updateUserMiddleName(userId, middleName);
     await persistConsentMetadata(userId);
 
+    // Создаем сессию сразу, чтобы не хранить пароль в кукпх
+    const sessionRes = await createSessionWithPassword(email, password);
+    if (!sessionRes.success || !sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {
+      return {
+        success: false,
+        errors: { form: "Аккаунт создан, но не удалось войти автоматически. Войдите вручную после подтверждения email." },
+        values,
+      };
+    }
+
     await setRegFlowCookie({
       givenName, familyName, middleName, email,
       source: "email",
       requestId,
       userId,
       loginName: email,
-      password,
+      sessionId: sessionRes.data.sessionId,
+      sessionToken: sessionRes.data.sessionToken,
     });
 
     const params = new URLSearchParams();

@@ -8,11 +8,21 @@ const TOTP_PENDING_COOKIE = "zitadel_totp_pending";
 const PASSWORD_RESET_COOKIE = "zitadel_password_reset";
 const COOKIE_MAX_AGE = 60 * 15; // 15 минут
 
-// Данные IDP intent (для пути через внешний провайдер)
 export interface IdpIntentData {
   intentId: string;
   intentToken: string;
-  idpInformation: any;
+  idp: {
+    idpId: string;
+    idpUserId: string;
+    idpUserName?: string;
+  };
+  prefill: {
+    email?: string;
+    givenName?: string;
+    familyName?: string;
+    preferredUsername?: string;
+    preferredLanguage?: string;
+  };
   requestId?: string;
 }
 
@@ -29,12 +39,6 @@ export interface RegFlowData {
   // После создания пользователя
   userId?: string;
   loginName?: string;
-  // Для email-пути регистрации (хранится кратко)
-  password?: string;
-  // Для IDP-пути
-  intentId?: string;
-  intentToken?: string;
-  // Для login-пути (сессия уже создана до верификации)
   sessionId?: string;
   sessionToken?: string;
 }
@@ -44,7 +48,7 @@ async function setCookie(name: string, data: object, maxAge = COOKIE_MAX_AGE) {
   store.set(name, JSON.stringify(data), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge,
   });
@@ -66,7 +70,7 @@ async function deleteCookie(name: string) {
   store.set(name, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: 0,
   });
@@ -76,6 +80,43 @@ async function deleteCookie(name: string) {
 export const setIdpIntentCookie = async (data: IdpIntentData) => setCookie(IDP_INTENT_COOKIE, data);
 export const getIdpIntentCookie = async () => getCookie<IdpIntentData>(IDP_INTENT_COOKIE);
 export const deleteIdpIntentCookie = async () => deleteCookie(IDP_INTENT_COOKIE);
+
+// Выбор только нужных для регистрации полей
+export async function extractIdpIntent(args: {
+  intentId: string;
+  intentToken: string;
+  idpInformation: any;
+  requestId?: string;
+}): Promise<IdpIntentData> {
+  const info = args.idpInformation ?? {};
+  const raw = info.rawInformation ?? {};
+
+  // name может прийти как одна строка
+  const nameStr: string = (raw.name ?? info.userName ?? "").trim();
+  const [givenFromName = "", ...rest] = nameStr.split(/\s+/);
+  const givenName = raw.given_name ?? raw.givenName ?? raw.first_name ?? givenFromName;
+  const familyName = raw.family_name ?? raw.familyName ?? raw.last_name ?? rest.join(" ");
+
+  const preferredLanguage = raw.preferredLanguage === "und" ? undefined : raw.preferredLanguage;
+
+  return {
+    intentId: args.intentId,
+    intentToken: args.intentToken,
+    requestId: args.requestId,
+    idp: {
+      idpId: info.idpId ?? "",
+      idpUserId: info.userId ?? "",
+      idpUserName: info.userName,
+    },
+    prefill: {
+      email: raw.email,
+      givenName: givenName || undefined,
+      familyName: familyName || undefined,
+      preferredUsername: raw.preferred_username,
+      preferredLanguage,
+    },
+  };
+}
 
 // Reg Flow cookie
 export const setRegFlowCookie = async (data: RegFlowData) => setCookie(REG_FLOW_COOKIE, data);

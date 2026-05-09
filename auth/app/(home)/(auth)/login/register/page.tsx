@@ -20,15 +20,11 @@ export default async function RegisterPage({
       redirect("/login");
     }
 
-    const rawInfo = intent.idpInformation?.rawInformation || {};
-    const nameString = (rawInfo?.name ?? intent.idpInformation?.userName ?? "").trim();
-    const [defaultGivenName = "", ...familyParts] = nameString.split(/\s+/);
-
     const initialData = {
-      givenName: defaultGivenName,
-      familyName: familyParts.join(" "),
+      givenName: intent.prefill.givenName ?? "",
+      familyName: intent.prefill.familyName ?? "",
       middleName: "",
-      email: rawInfo?.email ?? "",
+      email: intent.prefill.email ?? "",
     };
 
     const boundAction = continueRegisterIdp.bind(null, requestId);

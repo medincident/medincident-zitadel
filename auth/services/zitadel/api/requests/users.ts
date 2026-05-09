@@ -136,6 +136,17 @@ export async function updateHumanEmail(
   );
 }
 
+// Помечаем email verified, когда пользователь сбрасывает пароль
+export async function setHumanEmailVerified(
+  userId: string,
+  email: string
+): Promise<Result<z.infer<typeof ZitadelGenericUpdateResponseSchema>>> {
+  return handleZitadelRequest(
+    () => zitadelApi.post(`/v2/users/${userId}/email`, { email, isVerified: true }),
+    ZitadelGenericUpdateResponseSchema
+  );
+}
+
 export async function updateHumanAvatar(
   userId: string,
   file: File | Blob

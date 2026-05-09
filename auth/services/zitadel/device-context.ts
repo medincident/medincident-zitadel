@@ -70,7 +70,7 @@ export async function setDeviceCtx(ctx: DeviceCtx): Promise<void> {
     value: sealed,
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge,
   });
@@ -100,7 +100,7 @@ export async function setDeviceTokens(tokens: DeviceTokens): Promise<void> {
     value: sealed,
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge,
   });

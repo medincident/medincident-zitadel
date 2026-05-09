@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyUserEmail, createSessionWithPassword, searchUserSessions } from "@/services/zitadel/api";
+import { verifyUserEmail, searchUserSessions } from "@/services/zitadel/api";
 import { getRegFlowCookie, deleteRegFlowCookie } from "../../_lib/reg-flow";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
 import { getSessionCookieById, getAllSessionCookieIds } from "@/services/zitadel/cookies";
@@ -44,21 +44,10 @@ export async function verifyEmailAction(
   let loginName: string | undefined;
 
   if (flow) {
-    if (
-      (flow.source === "login" || flow.source === "idp") &&
-      flow.sessionId &&
-      flow.sessionToken
-    ) {
-      sessionData = { sessionId: flow.sessionId, sessionToken: flow.sessionToken };
-    } else if (flow.source === "email" && flow.password) {
-      const sessionRes = await createSessionWithPassword(flow.loginName!, flow.password);
-      if (!sessionRes.success || !sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {
-        return { errors: { form: "Не удалось создать сессию: " + JSON.stringify((sessionRes as any).error) } };
-      }
-      sessionData = sessionRes.data;
-    } else {
-      return { errors: { form: "Недостаточно данных для создания сессии." } };
+    if (!flow.sessionId || !flow.sessionToken) {
+      return { errors: { form: "Сессия регистрации устарела. Войдите снова." } };
     }
+    sessionData = { sessionId: flow.sessionId, sessionToken: flow.sessionToken };
     requestId = flow.requestId;
     loginName = flow.loginName;
     await deleteRegFlowCookie();
