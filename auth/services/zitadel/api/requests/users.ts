@@ -165,7 +165,7 @@ export async function updateUserMiddleName(userId: string, value: string) {
 export async function getUserMiddleName(userId: string): Promise<string | undefined> {
   const body: ZitadelSearchMetadataRequest = {
     query: { offset: 0, limit: 1, asc: true },
-    queries: [{ keyQuery: { key: "middleName" } }]
+    queries: [{ keyQuery: { key: "middleName", method: "TEXT_FILTER_METHOD_EQUALS" } }]
   };
 
   const response = await searchUserMetadata(userId, body);
@@ -179,9 +179,8 @@ export async function getUserMiddleName(userId: string): Promise<string | undefi
     return undefined;
   }
 
-  const field = metadataArray[0];
-  // Декодируем из Base64 обратно в utf-8
-  return field.value ? Buffer.from(field.value, "base64").toString("utf-8") : undefined;
+  const field = metadataArray.find((m: { key: string }) => m.key === "middleName");
+  return field?.value ? Buffer.from(field.value, "base64").toString("utf-8") : undefined;
 }
 
 export async function updateUserMetadata(

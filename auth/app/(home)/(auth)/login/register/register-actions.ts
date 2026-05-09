@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import {
   createHumanUser,
+  createSession,
   updateUserMetadata,
   updateUserMiddleName,
 } from "@/services/zitadel/api";
@@ -187,16 +188,31 @@ export async function continueRegisterIdp(
     if (middleName) await updateUserMiddleName(userId, middleName);
     await persistConsentMetadata(userId);
 
-    // Сохраняем flow для шага /verify (IDP путь — без пароля).
-    // loginName = email, чтобы юзер мог входить по email после верификации.
+    // Создаём сессию с idpIntent пока интент свежий.
+    const sessionRes = await createSession(userId, intent.intentId, intent.intentToken);
+    if (!sessionRes.success || !sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {
+      const msg = (sessionRes as any).error?.message ?? "";
+      const expired = msg.includes("Intent.Expired") || msg.includes("Intent.NotSucceeded");
+      await deleteIdpIntentCookie();
+      return {
+        success: false,
+        errors: {
+          form: expired
+            ? "Сессия Telegram истекла. Аккаунт создан — войдите через Telegram заново."
+            : "Не удалось создать сессию. Войдите через Telegram заново.",
+        },
+        values,
+      };
+    }
+
     await setRegFlowCookie({
       givenName, familyName, middleName, email,
       source: "idp",
       requestId,
       userId,
       loginName: email,
-      intentId: intent.intentId,
-      intentToken: intent.intentToken,
+      sessionId: sessionRes.data.sessionId,
+      sessionToken: sessionRes.data.sessionToken,
     });
 
     await deleteIdpIntentCookie();

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyUserEmail, createSession, createSessionWithPassword, searchUserSessions } from "@/services/zitadel/api";
+import { verifyUserEmail, createSessionWithPassword, searchUserSessions } from "@/services/zitadel/api";
 import { getRegFlowCookie, deleteRegFlowCookie } from "../../_lib/reg-flow";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
 import { getSessionCookieById, getAllSessionCookieIds } from "@/services/zitadel/cookies";
@@ -44,22 +44,12 @@ export async function verifyEmailAction(
   let loginName: string | undefined;
 
   if (flow) {
-    if (flow.source === "login" && flow.sessionId && flow.sessionToken) {
+    if (
+      (flow.source === "login" || flow.source === "idp") &&
+      flow.sessionId &&
+      flow.sessionToken
+    ) {
       sessionData = { sessionId: flow.sessionId, sessionToken: flow.sessionToken };
-    } else if (flow.source === "idp" && flow.intentId && flow.intentToken) {
-      const sessionRes = await createSession(flow.userId!, flow.intentId, flow.intentToken);
-      if (!sessionRes.success) {
-        const msg = (sessionRes as any).error?.message ?? "";
-        if (msg.includes("Intent.Expired") || msg.includes("Intent.NotSucceeded")) {
-          await deleteRegFlowCookie();
-          return { errors: { form: "Сессия Telegram истекла — войдите через Telegram заново.", expired: true } };
-        }
-        return { errors: { form: "Не удалось создать сессию: " + JSON.stringify((sessionRes as any).error) } };
-      }
-      if (!sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {
-        return { errors: { form: "Не удалось создать сессию: пустой ответ сервера." } };
-      }
-      sessionData = sessionRes.data;
     } else if (flow.source === "email" && flow.password) {
       const sessionRes = await createSessionWithPassword(flow.loginName!, flow.password);
       if (!sessionRes.success || !sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {

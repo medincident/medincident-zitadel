@@ -44,16 +44,23 @@ function DeviceIcon({ name, className }: { name: string; className?: string }) {
   return <Icon className={cn("size-5", className)} />;
 }
 
-function InfoButton({ tone = "muted" }: { tone?: "muted" | "primary" }) {
+function InfoButton({
+  tone = "muted",
+  ...props
+}: { tone?: "muted" | "primary" } & React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    ref?: React.Ref<HTMLButtonElement>;
+  }) {
   return (
     <button
       type="button"
       title="Показать технические данные"
+      {...props}
       className={cn(
         "transition-colors p-0.5 rounded-sm shrink-0 cursor-pointer outline-none",
         tone === "primary"
           ? "text-primary/40 hover:text-primary"
           : "text-muted-foreground/40 hover:text-primary focus-visible:text-primary",
+        props.className,
       )}
     >
       <Info className="size-3.5" />
