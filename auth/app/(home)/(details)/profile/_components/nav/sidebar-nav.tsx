@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -9,8 +9,6 @@ import {
   ArrowLeft,
   MonitorSmartphone,
   Settings2,
-  Settings,
-  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -58,7 +56,7 @@ const NavItem = memo(function NavItem({ href, icon: Icon, label, isActive }: Nav
 
 const withFrom = (path: string, from: string | null) => (from ? `${path}?from=${from}` : path);
 
-export function SidebarNav() {
+export function SidebarNav({ adminSlot }: { adminSlot?: ReactNode }) {
   const pathname = usePathname();
   const from = useSearchParams().get("from");
 
@@ -112,17 +110,7 @@ export function SidebarNav() {
 
         <QrScannerButton />
 
-        <Button
-          variant="ghost"
-          asChild
-          className="group w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
-        >
-          <a href="/ui/console" target="_blank" rel="noopener noreferrer">
-            <Settings className="size-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
-            <span className="flex-1 text-left">Админизация</span>
-            <ExternalLink className="size-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
-          </a>
-        </Button>
+        {adminSlot}
 
         <LogoutConfirmDialog>
           <Button

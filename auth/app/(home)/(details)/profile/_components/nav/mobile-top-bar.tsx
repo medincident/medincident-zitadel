@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/shared/ui/button";
 import { AppLogoIcon } from "@/app/_components/icons";
 import { APP_NAME } from "@/shared/lib/constants";
 import { QrScannerButton } from "../qr-scanner-button";
 
-export function MobileTopBar() {
+export function MobileTopBar({ adminSlot }: { adminSlot?: ReactNode }) {
   const from = useSearchParams().get("from");
 
   return (
@@ -17,16 +18,7 @@ export function MobileTopBar() {
         <AppLogoIcon className="size-6 text-primary" />
         <span className="text-primary font-medium">{APP_NAME}</span>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-          className="ml-1 text-muted-foreground hover:text-primary hover:bg-primary/10 font-medium"
-        >
-          <a href="/ui/console" target="_blank" rel="noopener noreferrer">
-            Админизация
-          </a>
-        </Button>
+        {adminSlot}
       </div>
 
       <div className="flex items-center gap-1 -mr-2">

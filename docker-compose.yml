@@ -5,12 +5,12 @@ x-zitadel-traefik-labels: &zitadel-traefik-labels
   traefik.docker.network: zitadel
   traefik.http.services.custom-ui.loadbalancer.server.port: 3000
 
-  traefik.http.routers.custom-ui-web.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`))
+  traefik.http.routers.custom-ui-web.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`)||PathPrefix(`/device`))
   traefik.http.routers.custom-ui-web.entrypoints: web
   traefik.http.routers.custom-ui-web.service: custom-ui
   traefik.http.routers.custom-ui-web.priority: 1000
 
-  traefik.http.routers.custom-ui-websecure.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`))
+  traefik.http.routers.custom-ui-websecure.rule: Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/oauth/v2/authorize`) && (Path(`/disco_cat.jpg`) || Path(`/`) || PathPrefix(`/_next`) || PathPrefix(`/login`) || PathPrefix(`/logout`) || PathPrefix(`/profile`) || PathPrefix(`/_next`) || PathPrefix(`/api/health`)||PathPrefix(`/api/auth`)||PathPrefix(`/error`)||PathPrefix(`/legal`)||PathPrefix(`/password`)||PathPrefix(`/device`))
   traefik.http.routers.custom-ui-websecure.entrypoints: websecure
   traefik.http.routers.custom-ui-websecure.tls: true
   traefik.http.routers.custom-ui-websecure.service: custom-ui
@@ -125,6 +125,10 @@ services:
 
       - traefik.http.middlewares.zitadel-strip-api.stripprefix.prefixes=/api
 
+      # Не даем пройти на /ui/console с ForwardAuth, если нет прав админа, то редирект на /api/auth/admin-check
+      - traefik.http.middlewares.admin-forward-auth.forwardauth.address=http://custom-ui:3000/api/auth/admin-check
+      - traefik.http.middlewares.admin-forward-auth.forwardauth.trustForwardHeader=true
+
       - traefik.http.routers.zitadel-api-alias-web.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/api`)
       - traefik.http.routers.zitadel-api-alias-web.entrypoints=web
       - traefik.http.routers.zitadel-api-alias-web.middlewares=zitadel-strip-api
@@ -137,6 +141,20 @@ services:
       - traefik.http.routers.zitadel-api-alias-websecure.middlewares=zitadel-strip-api
       - traefik.http.routers.zitadel-api-alias-websecure.service=zitadel-api
       - traefik.http.routers.zitadel-api-alias-websecure.priority=200
+
+      # Перехват /ui/console. Middleware с /api/auth/admin-check, который возвращает 403 для пользвоателей без прав. Таких Traefik не пропустит дальше.
+      - traefik.http.routers.zitadel-console-web.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/ui/console`)
+      - traefik.http.routers.zitadel-console-web.entrypoints=web
+      - traefik.http.routers.zitadel-console-web.service=zitadel-api
+      - traefik.http.routers.zitadel-console-web.middlewares=admin-forward-auth
+      - traefik.http.routers.zitadel-console-web.priority=300
+
+      - traefik.http.routers.zitadel-console-websecure.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/ui/console`)
+      - traefik.http.routers.zitadel-console-websecure.entrypoints=websecure
+      - traefik.http.routers.zitadel-console-websecure.tls=true
+      - traefik.http.routers.zitadel-console-websecure.service=zitadel-api
+      - traefik.http.routers.zitadel-console-websecure.middlewares=admin-forward-auth
+      - traefik.http.routers.zitadel-console-websecure.priority=300
 
       - traefik.http.routers.zitadel-canonical-web.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/login`) && !PathPrefix(`/ui/v2/login`) && !PathPrefix(`/api`) && !Path(`/`)
       - traefik.http.routers.zitadel-canonical-web.entrypoints=web
@@ -227,7 +245,8 @@ services:
       - /app/node_modules
       - /app/.next
     networks:
-      - zitadel
+      zitadel:
+        aliases: [ custom-ui ]
     labels:
       <<: *zitadel-traefik-labels
     logging:
@@ -256,7 +275,8 @@ services:
     volumes:
       - ./auth/secrets:/app/secrets:ro
     networks:
-      - zitadel
+      zitadel:
+        aliases: [ custom-ui ]
     labels:
       <<: *zitadel-traefik-labels
       com.centurylinklabs.watchtower.enable: "true"

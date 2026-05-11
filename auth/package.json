@@ -9,7 +9,8 @@
     "start": "env-cmd -f .env bun --bun next start -p 80",
     "lint": "eslint .",
     "proto:update": "cd proto && buf dep update",
-    "proto:generate": "mkdir -p lib/generated/proto && cd proto && buf generate"
+    "proto:generate": "mkdir -p lib/generated/proto && cd proto && buf generate",
+    "codegen": "openapi-ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -44,6 +45,8 @@
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.66.1",
+    "@hey-api/client-axios": "0.9.1",
+    "@hey-api/openapi-ts": "0.97.1",
     "@tailwindcss/postcss": "^4.1.7",
     "@types/node": "^20",
     "@types/react": "^19.2.14",

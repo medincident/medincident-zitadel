@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { getUserById } from "@/services/zitadel/api";
 import { auth } from "@/services/zitadel/user/auth";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
+import { AdminMenuButton } from "./_components/admin-menu-button";
 import { AutoSignIn } from "../../(auth)/login/_components/auto-sign-in";
 
 async function EmailGuardedContent({ children }: { children: React.ReactNode }) {
@@ -42,7 +43,7 @@ export default async function ProfileLayout({
 
       <Suspense>
         <div className="md:hidden w-full z-30 bg-background/80 backdrop-blur-sm border-b border-border px-1 shrink-0">
-          <MobileTopBar />
+          <MobileTopBar adminSlot={<Suspense fallback={null}><AdminMenuButton variant="mobile" /></Suspense>} />
         </div>
       </Suspense>
 
@@ -59,7 +60,7 @@ export default async function ProfileLayout({
         <aside className="hidden md:block overflow-hidden h-fit">
           <Card className="flex flex-col bg-card border-border overflow-hidden rounded-xl p-4">
              <Suspense>
-              <SidebarNav />
+              <SidebarNav adminSlot={<Suspense fallback={null}><AdminMenuButton variant="sidebar" /></Suspense>} />
             </Suspense>
           </Card>
         </aside>
