@@ -100,6 +100,7 @@ export async function finishAuth(
     session: newSessionCookie,
     cleanup: true,
   });
+  await setPreferredSessionId(sessionResData.sessionId);
 
   console.log("[auth:finishAuth] Сессия сохранена в cookie: id=%s, loginName=%s",
     newSessionCookie.id, newSessionCookie.loginName);

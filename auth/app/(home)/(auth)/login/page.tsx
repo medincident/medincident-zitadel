@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: any })
     );
   }
 
-  if (forceSelectAccount) {
+  if (forceSelectAccount && !isAddNew) {
     redirect(`/?requestId=${requestId}`);
   }
 
