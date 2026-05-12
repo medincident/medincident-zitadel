@@ -1,9 +1,7 @@
-// app/actions/auth.ts
 "use server";
 
 import { redirect } from "next/navigation";
 
-// Импортируем ваши методы для работы с пользователями и сессиями
 import { createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod, getSession } from "@/services/zitadel/api";
 import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
 import { extractIdpIntent, setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
@@ -11,11 +9,9 @@ import { env } from "@/shared/config/env";
 
 async function evaluateTotpGate(
   sessionId: string,
-  sessionToken: string,
+  _sessionToken: string,
   cachedSession: any,
 ): Promise<{ required: boolean; userId: string | undefined; session: any }> {
-  // Если сессия уже есть - используем её
-  // Иначе подгружаем через getSession
   let session = cachedSession && cachedSession.factors?.user?.id ? cachedSession : undefined;
   if (!session) {
     const res = await getSession(sessionId);
@@ -24,7 +20,6 @@ async function evaluateTotpGate(
 
   const resolvedUserId: string | undefined = session?.factors?.user?.id;
   if (!resolvedUserId) {
-    console.error("[auth:totp-gate] Не удалось определить userId из сессии sessionId=%s — gate пропущен", sessionId);
     return { required: false, userId: undefined, session };
   }
 
@@ -34,7 +29,7 @@ async function evaluateTotpGate(
 
   const methods = await listAuthMethods(resolvedUserId);
   if (!methods.success) {
-    console.error("[auth:totp-gate] listAuthMethods упал для userId=%s — fail-closed, требуем TOTP", resolvedUserId);
+    // при ошибке чтения методов считаем TOTP включённым
     return { required: true, userId: resolvedUserId, session };
   }
 
@@ -61,24 +56,12 @@ export async function completeAuthFlow(sessionId: string, sessionToken: string, 
 
   return callbackUrl;
 }
-/**
- * Универсальная функция финализации авторизации.
- *
- * Принимает данные созданной Zitadel-сессии (sessionId/sessionToken и опционально
- * полный session object с factors). Поддерживает явный userId — нужен для
- * TOTP-гейта в путях, где session.factors.user может быть пустым.
- *
- * Шаги:
- *  1. TOTP gate: если у юзера включён TOTP, а в сессии его ещё нет — кладём
- *     pending-cookie и редиректим на /login/totp.
- *  2. Сохраняем сессию в cookie (мульти-аккаунт + auto-complete).
- *  3. Развилка: requestId → завершаем OIDC/SAML auth-request, иначе → /profile.
- */
 export async function finishAuth(
   sessionResData: { sessionId: string; sessionToken: string; session?: any },
   requestId?: string,
   loginNameOverride?: string,
   userId?: string,
+  opts?: { skipTotpGate?: boolean },
 ) {
   const gate = await evaluateTotpGate(
     sessionResData.sessionId,
@@ -91,9 +74,7 @@ export async function finishAuth(
   const effectiveUserId = gate.userId || userId || userFactors.id;
   const loginName = loginNameOverride || userFactors.loginName || "unknown";
 
-  if (gate.required) {
-    console.log("[auth:finishAuth] TOTP required: userId=%s, sessionId=%s",
-      effectiveUserId, sessionResData.sessionId);
+  if (gate.required && !opts?.skipTotpGate) {
     await setTotpPendingCookie({
       sessionId: sessionResData.sessionId,
       sessionToken: sessionResData.sessionToken,
@@ -117,23 +98,16 @@ export async function finishAuth(
     requestId: requestId,
   };
 
-  // Сохраняем сессию в куки sessions (для мульти-аккаунт и auto-complete)
   await addSessionToCookie({
     session: newSessionCookie,
     cleanup: true,
   });
   await setPreferredSessionId(sessionResData.sessionId);
 
-  console.log("[auth:finishAuth] Сессия сохранена в cookie: id=%s, loginName=%s",
-    newSessionCookie.id, newSessionCookie.loginName);
-
-  // РАЗВИЛКА ЛОГИНА
   if (requestId) {
-    console.log("[auth:finishAuth] OIDC/SAML ROUTE: sessionId=%s, requestId=%s", sessionResData.sessionId, requestId);
     const redirectUrl = await completeAuthFlow(sessionResData.sessionId, sessionResData.sessionToken, requestId);
     redirect(redirectUrl);
   } else {
-    console.log("[auth:finishAuth] PROFILE ROUTE: sessionId=%s — NextAuth AutoSignIn обработает авторизацию", sessionResData.sessionId);
     redirect("/profile");
   }
 }

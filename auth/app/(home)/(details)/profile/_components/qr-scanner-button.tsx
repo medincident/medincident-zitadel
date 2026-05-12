@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QrCode, Loader2 } from "lucide-react";
+import jsQR from "jsqr";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { useRouter } from "next/navigation";
 
-// BarcodeDetector — нативный браузерный API (Chrome 83+, Safari 17+)
-declare const BarcodeDetector: any;
+declare const BarcodeDetector: unknown;
 
 type Variant = "default" | "icon" | "compact" | "compact-responsive";
 
@@ -22,6 +22,18 @@ const CORNER_CLASSES = [
   "bottom-0 right-0 border-b-2 border-r-2 rounded-br-lg",
 ] as const;
 
+function tryExtractDevicePath(rawValue: string, expectedOrigin: string): string | null {
+  try {
+    const parsed = new URL(rawValue);
+    if (parsed.origin !== expectedOrigin) return null;
+    if (parsed.pathname !== "/device") return null;
+    if (!parsed.searchParams.get("user_code")) return null;
+    return parsed.pathname + parsed.search;
+  } catch {
+    return null;
+  }
+}
+
 export function QrScannerButton({ variant = "default" }: QrScannerButtonProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +41,7 @@ export function QrScannerButton({ variant = "default" }: QrScannerButtonProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const router = useRouter();
 
   const stopCamera = useCallback(() => {
@@ -56,63 +69,102 @@ export function QrScannerButton({ variant = "default" }: QrScannerButtonProps) {
     if (!open) return;
 
     let cancelled = false;
+    const expectedOrigin = window.location.origin;
 
     async function init() {
       setScanning(true);
       setError(null);
 
+      let stream: MediaStream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
         });
-
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        if (typeof BarcodeDetector === "undefined") {
-          setError("Ваш браузер не поддерживает сканирование QR-кодов.\nОбновите Chrome или Safari.");
-          setScanning(false);
-          return;
-        }
-
-        const detector = new BarcodeDetector({ formats: ["qr_code"] });
-
-        async function scan() {
-          if (cancelled || !videoRef.current) return;
-          try {
-            const results = await detector.detect(videoRef.current);
-            if (results.length > 0) {
-              const rawValue: string = results[0].rawValue;
-              try {
-                const parsed = new URL(rawValue);
-                if (parsed.pathname === "/device" && parsed.searchParams.get("user_code")) {
-                  stopCamera();
-                  setOpen(false);
-                  router.push(parsed.pathname + parsed.search);
-                  return;
-                }
-              } catch {}
-            }
-          } catch {}
-          rafRef.current = requestAnimationFrame(scan);
-        }
-
-        scan();
       } catch {
         if (!cancelled) {
           setError("Нет доступа к камере. Разрешите доступ в настройках браузера.");
           setScanning(false);
         }
+        return;
       }
+
+      if (cancelled) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch {
+          stopCamera();
+          if (!cancelled) {
+            setError("Не удалось запустить камеру");
+            setScanning(false);
+          }
+          return;
+        }
+      }
+
+      const hasBarcodeDetector = typeof BarcodeDetector !== "undefined";
+      const getCanvas = (): HTMLCanvasElement => {
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement("canvas");
+        }
+        return canvasRef.current;
+      };
+
+      let detector: { detect: (s: HTMLVideoElement) => Promise<{ rawValue: string }[]> } | null = null;
+      if (hasBarcodeDetector) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        detector = new (BarcodeDetector as any)({ formats: ["qr_code"] });
+      }
+
+      async function scan() {
+        if (cancelled || !videoRef.current) return;
+
+        let rawValue: string | null = null;
+        try {
+          if (detector) {
+            const results = await detector.detect(videoRef.current);
+            if (results.length > 0) rawValue = results[0].rawValue;
+          } else {
+            const video = videoRef.current;
+            const w = video.videoWidth;
+            const h = video.videoHeight;
+            if (w > 0 && h > 0) {
+              const canvas = getCanvas();
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, w, h);
+                const img = ctx.getImageData(0, 0, w, h);
+                const code = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
+                if (code?.data) rawValue = code.data;
+              }
+            }
+          }
+        } catch {
+        }
+
+        if (rawValue) {
+          const path = tryExtractDevicePath(rawValue, expectedOrigin);
+          if (path) {
+            stopCamera();
+            setOpen(false);
+            router.push(path);
+            return;
+          }
+        }
+
+        rafRef.current = requestAnimationFrame(scan);
+      }
+
+      scan();
     }
 
     init();

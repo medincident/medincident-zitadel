@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   approveDeviceAuthorization,
@@ -7,13 +8,29 @@ import {
 } from "@/services/zitadel/api";
 import { getSessionCookieById } from "@/services/zitadel/cookies";
 import { requireValidSession } from "@/services/zitadel/session";
+import { unsealDeviceHint } from "@/services/zitadel/device-context";
+import { rateLimit } from "@/shared/lib/rate-limit";
 
-export async function approveDeviceAction(userCode: string): Promise<void> {
-  if (!userCode || userCode.length > 32) {
+const USER_CODE_RE = /^[A-Z0-9-]{4,16}$/;
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  const xff = h.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return h.get("x-real-ip") || "unknown";
+}
+
+export async function approveDeviceAction(userCode: string, hint?: string): Promise<void> {
+  if (!userCode || !USER_CODE_RE.test(userCode)) {
     throw new Error("Неверный код устройства");
   }
 
   const { currentSessionId } = await requireValidSession();
+
+  const rl = rateLimit(`device-approve:${currentSessionId}`, 5, 60_000);
+  if (!rl.ok) {
+    throw new Error("Слишком много подтверждений. Подождите минуту.");
+  }
 
   const sessionCookie = await getSessionCookieById({ sessionId: currentSessionId });
   if (!sessionCookie?.token) {
@@ -25,7 +42,9 @@ export async function approveDeviceAction(userCode: string): Promise<void> {
     throw new Error("QR-код недействителен или истёк");
   }
 
-  const deviceAuthId = deviceAuthRes.data.deviceAuthorizationRequest.id;
+  const deviceAuthRequest = deviceAuthRes.data.deviceAuthorizationRequest;
+  const deviceAuthId = deviceAuthRequest.id!;
+  const appName: string = (deviceAuthRequest as { appName?: string }).appName || "Приложение";
 
   const approveRes = await approveDeviceAuthorization(
     deviceAuthId,
@@ -36,12 +55,18 @@ export async function approveDeviceAction(userCode: string): Promise<void> {
     throw new Error("Не удалось подтвердить вход");
   }
 
-  redirect("/device/success");
+  const deviceHint = hint ? await unsealDeviceHint(hint) : null;
+  const deviceUa = deviceHint?.browser ?? "";
+
+  const params = new URLSearchParams();
+  params.set("app", appName);
+  if (deviceUa) params.set("deviceUa", deviceUa);
+
+  redirect(`/device/success?${params.toString()}`);
 }
 
 export async function denyDeviceAction(): Promise<void> {
-  // Zitadel не предоставляет явного endpoint'а отклонения Device Flow;
-  // Device A всё равно получит `access_denied` / `expired_token` через polling,
-  // если просто не подтвердить. Редиректим юзера обратно в профиль.
+  const { currentSessionId } = await requireValidSession();
+  console.log("[device:deny] sessionId=%s, ip=%s", currentSessionId, await clientIp());
   redirect("/profile");
 }

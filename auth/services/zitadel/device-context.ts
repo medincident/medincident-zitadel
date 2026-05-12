@@ -4,28 +4,14 @@ import { cookies } from "next/headers";
 import { CompactEncrypt, compactDecrypt } from "jose";
 import { env } from "@/shared/config/env";
 
-// Контекст Device Flow хранится в HttpOnly encrypted cookie — не в in-memory map.
-// Это позволяет пережить перезапуск, HMR и горизонтальное масштабирование.
-// Шифруется JWE (A256GCM) на SHA-256 от ZITADEL_SECRET.
-
 export const DEVICE_CTX_COOKIE = "zdc_ctx";
-export const DEVICE_TOKENS_COOKIE = "zdc_tokens";
 
 export interface DeviceCtx {
   deviceCode: string;
   userCode: string;
-  nonce: string;
   requestId?: string;
   browser?: string;
   createdAt: number;
-  expiresAt: number;
-}
-
-export interface DeviceTokens {
-  accessToken: string;
-  idToken: string;
-  refreshToken?: string;
-  nonce: string;
   expiresAt: number;
 }
 
@@ -91,40 +77,6 @@ export async function clearDeviceCtx(): Promise<void> {
   cookiesList.delete(DEVICE_CTX_COOKIE);
 }
 
-export async function setDeviceTokens(tokens: DeviceTokens): Promise<void> {
-  const sealed = await seal(tokens);
-  const cookiesList = await cookies();
-  const maxAge = Math.max(1, Math.floor((tokens.expiresAt - Date.now()) / 1000));
-  cookiesList.set({
-    name: DEVICE_TOKENS_COOKIE,
-    value: sealed,
-    httpOnly: true,
-    secure: isProd(),
-    sameSite: "strict",
-    path: "/",
-    maxAge,
-  });
-}
-
-export async function getDeviceTokens(): Promise<DeviceTokens | null> {
-  const cookiesList = await cookies();
-  const raw = cookiesList.get(DEVICE_TOKENS_COOKIE)?.value;
-  if (!raw) return null;
-  const tokens = await unseal<DeviceTokens>(raw);
-  if (!tokens) return null;
-  if (tokens.expiresAt < Date.now()) return null;
-  return tokens;
-}
-
-export async function clearDeviceTokens(): Promise<void> {
-  const cookiesList = await cookies();
-  cookiesList.delete(DEVICE_TOKENS_COOKIE);
-}
-
-// Device hint — публичная метадата Device A (browser/os), передаётся в QR URL.
-// Шифруется тем же secret, но предназначена для чтения на /device странице
-// (уже на Device B). Не содержит device_code или других секретов.
-
 export interface DeviceHint {
   browser: string;
   createdAt: number;
@@ -136,4 +88,62 @@ export async function sealDeviceHint(hint: DeviceHint): Promise<string> {
 
 export async function unsealDeviceHint(token: string): Promise<DeviceHint | null> {
   return unseal<DeviceHint>(token);
+}
+
+// applyDeviceFlowAction — через server-side Map с TTL.
+export interface DeviceApproval {
+  userId: string;
+  mfaProven: boolean;
+  requestId?: string;
+  accessToken: string;
+  idToken: string;
+  refreshToken?: string;
+  accessTokenExpiresAt: number;
+  expiresAt: number;
+}
+
+interface ApprovalGlobal {
+  __zdcApprovals?: Map<string, DeviceApproval>;
+}
+
+function approvalStore(): Map<string, DeviceApproval> {
+  const g = globalThis as ApprovalGlobal;
+  if (!g.__zdcApprovals) {
+    g.__zdcApprovals = new Map();
+  }
+  return g.__zdcApprovals;
+}
+
+const APPROVAL_TTL_MS = 30_000;
+
+export function putQrApproval(userCode: string, approval: Omit<DeviceApproval, "expiresAt">): void {
+  approvalStore().set(userCode, { ...approval, expiresAt: Date.now() + APPROVAL_TTL_MS });
+}
+
+export function takeQrApproval(userCode: string): DeviceApproval | null {
+  const store = approvalStore();
+  const entry = store.get(userCode);
+  if (!entry) return null;
+  store.delete(userCode);
+  if (entry.expiresAt < Date.now()) return null;
+  return entry;
+}
+
+export function peekQrApproval(userCode: string): DeviceApproval | null {
+  const store = approvalStore();
+  const entry = store.get(userCode);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    store.delete(userCode);
+    return null;
+  }
+  return entry;
+}
+
+export function pruneExpiredQrApprovals(): void {
+  const store = approvalStore();
+  const now = Date.now();
+  for (const [code, entry] of store) {
+    if (entry.expiresAt < now) store.delete(code);
+  }
 }

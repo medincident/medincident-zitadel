@@ -2,18 +2,22 @@
 
 import { redirect } from "next/navigation";
 import { env } from "@/shared/config/env";
-import { deleteSession, getActiveIdps, startIdpIntent, createSessionByUserId, getSession, searchUserSessions } from "@/services/zitadel/api";
-import { getAllSessions, removeSessionFromCookie } from "@/services/zitadel/cookies";
+import {
+  createSessionByUserId,
+  deleteSession,
+  getActiveIdps,
+  getSession,
+  searchUserSessions,
+  startIdpIntent,
+} from "@/services/zitadel/api";
+import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
 import {
   clearDeviceCtx,
-  clearDeviceTokens,
   getDeviceCtx,
-  getDeviceTokens,
+  peekQrApproval,
 } from "@/services/zitadel/device-context";
-import { verifyIdToken } from "@/services/zitadel/id-token";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
-import { signOut } from "@/services/zitadel/user/auth";
-import { finishAuth } from "./callback/success/actions";
+import { signIn, signOut } from "@/services/zitadel/user/auth";
 
 export async function fetchProvidersAction() {
   const response = await getActiveIdps();
@@ -49,69 +53,60 @@ export async function loginWithProviderAction(idpId: string, requestId?: string)
   redirect(response.data.authUrl);
 }
 
-/**
- * Применяет tokens полученные через Device Flow.
- *
- * Последовательность защит:
- *  1. zdc_tokens cookie существует и не истёк (HttpOnly, SameSite=Lax, Secure).
- *  2. zdc_ctx всё ещё существует — или уже подчищен; главное, что nonce совпадает.
- *  3. id_token валидирован через Zitadel JWKS (подпись, iss, aud, exp).
- *  4. nonce в tokens совпадает с тем, что был в ctx — связывает QR с полученными токенами.
- *
- * Только после всех четырёх проверок создаём Zitadel session v2 для sub из id_token.
- * Это не «машинный shortcut» — это запись о том, что Device Flow успешно завершён
- * конкретным пользователем, подтверждённым Zitadel IdP на Device B.
- */
-export async function applyDeviceTokensAction() {
-  const tokens = await getDeviceTokens();
-  if (!tokens) {
-    throw new Error("Сессия устройства недействительна или истекла");
+// Завершает QR Device Flow на Device A: токены получены SSE-handler'ом через
+// device_code grant, здесь только создаём сессию для requireValidSession и
+// делегируем выписку JWT NextAuth Credentials provider.
+export async function applyDeviceFlowAction(userCode: string) {
+  if (!userCode || typeof userCode !== "string") {
+    throw new Error("Некорректный код устройства");
   }
 
-  // ctx мог быть уже очищен (status route чистит его при успехе) — тогда nonce сверяем
-  // только если он есть. Главный binding — подпись id_token от Zitadel.
+  // action может вызвать только устройство, инициировавшее QR
   const ctx = await getDeviceCtx();
-  if (ctx && ctx.nonce !== tokens.nonce) {
-    await clearDeviceTokens();
-    await clearDeviceCtx();
-    throw new Error("Привязка устройства нарушена");
+  if (!ctx || ctx.userCode !== userCode) {
+    throw new Error("Контекст устройства не найден или не совпадает");
   }
 
-  let claims;
-  try {
-    claims = await verifyIdToken(tokens.idToken);
-  } catch (e) {
-    await clearDeviceTokens();
-    await clearDeviceCtx();
-    const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`Невалидный id_token: ${msg}`);
+  const approval = peekQrApproval(userCode);
+  if (!approval) {
+    throw new Error("Сессия одобрения устарела. Попробуйте снова.");
   }
 
-  const userId = claims.sub;
-
-  const sessionRes = await createSessionByUserId(userId);
-  if (!sessionRes.success || !sessionRes.data?.sessionId || !sessionRes.data?.sessionToken) {
-    throw new Error("Не удалось создать сессию");
-  }
-
-  const { sessionId, sessionToken } = sessionRes.data;
-
-  const sessionDataRes = await getSession(sessionId);
-  const session = sessionDataRes.success ? sessionDataRes.data?.session : undefined;
-
-  console.log(
-    "[auth:applyDeviceTokens] Device Flow: userId=%s, sessionId=%s",
-    userId,
-    sessionId,
-  );
-
-  const requestId = ctx?.requestId;
-
-  // После успеха — чистим ctx и tokens.
-  await clearDeviceTokens();
   await clearDeviceCtx();
 
-  await finishAuth({ sessionId, sessionToken, session }, requestId, undefined, userId);
+  try {
+    const sessionRes = await createSessionByUserId(approval.userId);
+    if (sessionRes.success && sessionRes.data?.sessionId && sessionRes.data?.sessionToken) {
+      const { sessionId, sessionToken } = sessionRes.data;
+      const sessionDataRes = await getSession(sessionId);
+      const session = sessionDataRes.success ? sessionDataRes.data?.session : undefined;
+      const userFactors = (session as { factors?: { user?: { loginName?: string; organizationId?: string } } })?.factors?.user || {};
+      const creation = (session as { creationDate?: string })?.creationDate;
+      const expiration = (session as { expirationDate?: string })?.expirationDate;
+      const change = (session as { changeDate?: string })?.changeDate;
+
+      await addSessionToCookie({
+        session: {
+          id: sessionId,
+          token: sessionToken,
+          creationTs: new Date(creation || Date.now()).getTime().toString(),
+          expirationTs: new Date(expiration || Date.now() + 86400000).getTime().toString(),
+          changeTs: new Date(change || Date.now()).getTime().toString(),
+          loginName: userFactors.loginName || "unknown",
+          organization: userFactors.organizationId || "",
+        },
+        cleanup: true,
+      });
+      await setPreferredSessionId(sessionId);
+    }
+  } catch (e) {
+    console.error("[auth:applyDeviceFlow] Ошибка V2-сессии:", e instanceof Error ? e.message : e);
+  }
+
+  await signIn("qr-device-flow", {
+    userCode,
+    redirectTo: "/profile",
+  });
 }
 
 export async function logoutAction() {

@@ -1,6 +1,17 @@
 import NextAuth from "next-auth";
 import ZitadelProvider from "next-auth/providers/zitadel";
+import Credentials from "next-auth/providers/credentials";
 import { env } from "@/shared/config/env";
+import { takeQrApproval } from "@/services/zitadel/device-context";
+
+declare module "next-auth" {
+  interface User {
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpiresAt?: number;
+    zitadelUserId?: string;
+  }
+}
 
 const OIDC_SCOPES = [
   "openid",
@@ -101,13 +112,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
     }),
+    // Tokens получены SSE-handler'ом через device_code grant — берём их из
+    // approval store по userCode и кладём в JWT, минуя PKCE flow.
+    Credentials({
+      id: "qr-device-flow",
+      name: "QR Device Flow",
+      credentials: {
+        userCode: { type: "text" },
+      },
+      authorize: async (credentials) => {
+        const userCode = typeof credentials?.userCode === "string" ? credentials.userCode : "";
+        if (!userCode) return null;
+
+        const approval = takeQrApproval(userCode);
+        if (!approval) return null;
+
+        return {
+          id: approval.userId,
+          accessToken: approval.accessToken,
+          refreshToken: approval.refreshToken,
+          accessTokenExpiresAt: approval.accessTokenExpiresAt,
+          zitadelUserId: approval.userId,
+        };
+      },
+    }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
-      // 1. Первичный логин — account доступен только при первом входе
-      if (account) {
-        console.log("[NextAuth:jwt] Логин: zitadelUserId=%s", account.providerAccountId);
-
+    async jwt({ token, account, user }) {
+      // 1a. Первичный логин через OIDC (ZitadelProvider) — account доступен
+      if (account?.provider === "zitadel") {
         return {
           ...token,
           accessToken: account.access_token,
@@ -119,13 +152,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       }
 
+      if (account?.provider === "qr-device-flow" && user) {
+        return {
+          ...token,
+          accessToken: user.accessToken,
+          zitadelUserId: user.zitadelUserId,
+          expiresAt: user.accessTokenExpiresAt ?? Date.now() + 12 * 60 * 60 * 1000,
+          refreshToken: user.refreshToken,
+        };
+      }
+
       // 2. Если токен еще жив (добавляем запас в 1 минуту)
       if (Date.now() < (token.expiresAt as number) - 60 * 1000) {
         return token;
       }
 
       // 3. Токен истек — обновляем
-      console.log("[NextAuth:jwt] Токен истёк, обновляем...");
       return await refreshAccessToken(token);
     },
 

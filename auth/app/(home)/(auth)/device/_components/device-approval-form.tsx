@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { CheckCircle2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -8,21 +9,32 @@ import { approveDeviceAction, denyDeviceAction } from "../actions";
 
 interface DeviceApprovalFormProps {
   userCode: string;
+  hint?: string;
   displayName: string;
 }
 
-export function DeviceApprovalForm({ userCode, displayName }: DeviceApprovalFormProps) {
+const COOLDOWN_SECONDS = 5;
+
+export function DeviceApprovalForm({ userCode, hint, displayName }: DeviceApprovalFormProps) {
   const [isApproving, startApprove] = useTransition();
   const [isDenying, startDeny] = useTransition();
+  const [cooldown, setCooldown] = useState(COOLDOWN_SECONDS);
   const busy = isApproving || isDenying;
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   function handleApprove() {
     startApprove(async () => {
       try {
-        await approveDeviceAction(userCode);
+        await approveDeviceAction(userCode, hint);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Ошибка подтверждения";
-        toast.error(msg);
+        if (isRedirectError(e)) throw e;
+        const msg = e instanceof Error ? e.message : "Попробуйте ещё раз";
+        toast.error("Не удалось подтвердить вход", { description: msg });
       }
     });
   }
@@ -32,8 +44,9 @@ export function DeviceApprovalForm({ userCode, displayName }: DeviceApprovalForm
       try {
         await denyDeviceAction();
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Ошибка";
-        toast.error(msg);
+        if (isRedirectError(e)) throw e;
+        const msg = e instanceof Error ? e.message : "Попробуйте ещё раз";
+        toast.error("Не удалось отменить", { description: msg });
       }
     });
   }
@@ -50,13 +63,18 @@ export function DeviceApprovalForm({ userCode, displayName }: DeviceApprovalForm
       </p>
 
       <div className="flex flex-col gap-3 w-full max-w-[240px]">
-        <Button onClick={handleApprove} disabled={busy} size="md" className="w-full">
+        <Button
+          onClick={handleApprove}
+          disabled={busy || cooldown > 0}
+          size="md"
+          className="w-full"
+        >
           {isApproving ? (
             <Loader2 className="mr-2 animate-spin" />
           ) : (
             <CheckCircle2 className="mr-2" />
           )}
-          Подтвердить вход
+          {cooldown > 0 ? `Подтвердить вход (${cooldown})` : "Подтвердить вход"}
         </Button>
 
         <Button

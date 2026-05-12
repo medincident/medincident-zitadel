@@ -11,6 +11,7 @@ import { logoutAction } from "./actions";
 const QrDataSchema = z.object({
   url: z.string(),
   token: z.string().optional(),
+  userCode: z.string().optional(),
   expiresInSeconds: z.number(),
 }) satisfies z.ZodType<QrData>;
 
@@ -61,6 +62,7 @@ export function useQrAuth(enabled: boolean = true, requestId?: string) {
   return {
     qrUrl: data?.url,
     qrToken: data?.token,
+    qrUserCode: data?.userCode,
     isLoading: isLoading || isValidating,
     isError: !!error,
     refresh: mutate,

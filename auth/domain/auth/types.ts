@@ -18,6 +18,7 @@ export interface JwtUser extends JWTPayload {
 export interface QrData {
   url?: string;
   token?: string;
+  userCode?: string;
   expiresInSeconds: number;
 }
 

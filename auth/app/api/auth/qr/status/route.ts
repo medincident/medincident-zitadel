@@ -1,17 +1,18 @@
 import {
   clearDeviceCtx,
   getDeviceCtx,
-  setDeviceTokens,
+  putQrApproval,
   type DeviceCtx,
 } from "@/services/zitadel/device-context";
+import { verifyIdToken } from "@/services/zitadel/id-token";
+import { amrIncludesMfa } from "@/shared/lib/amr";
 import { rateLimit, clientKeyFromRequest } from "@/shared/lib/rate-limit";
 import { env } from "@/shared/config/env";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// RFC 8628 рекомендует interval ≥ 5с между опросами token endpoint.
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 10_000;
 const MAX_SSE_DURATION_MS = 5 * 60 * 1000;
 
 interface PendingResult { status: "pending" }
@@ -56,15 +57,32 @@ async function pollDeviceToken(ctx: DeviceCtx): Promise<PollResult> {
   return { status: "expired" };
 }
 
-async function persistTokens(ctx: DeviceCtx, result: ConfirmedResult): Promise<void> {
-  await setDeviceTokens({
+async function recordApproval(ctx: DeviceCtx, result: ConfirmedResult): Promise<boolean> {
+  let claims;
+  try {
+    claims = await verifyIdToken(result.idToken);
+  } catch (e) {
+    console.error("[qr/status] verifyIdToken упал:", e instanceof Error ? e.message : e);
+    return false;
+  }
+
+  const userId = typeof claims.sub === "string" ? claims.sub : undefined;
+  if (!userId) {
+    console.error("[qr/status] id_token без sub-клейма");
+    return false;
+  }
+
+  putQrApproval(ctx.userCode, {
+    userId,
+    mfaProven: amrIncludesMfa((claims as { amr?: unknown }).amr),
+    requestId: ctx.requestId,
     accessToken: result.accessToken,
     idToken: result.idToken,
     refreshToken: result.refreshToken,
-    nonce: ctx.nonce,
-    expiresAt: Date.now() + result.expiresIn * 1000,
+    accessTokenExpiresAt: Date.now() + result.expiresIn * 1000,
   });
-  await clearDeviceCtx();
+
+  return true;
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -82,14 +100,6 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/**
- * SSE endpoint для статуса Device Flow.
- * Устройство A (браузер) держит EventSource, сервер опрашивает Zitadel
- * /oauth/v2/token каждые 5с и пушит статус обновление клиенту.
- *
- * deviceCode хранится в HttpOnly cookie (zdc_ctx), никогда не попадает к клиенту.
- * Токены при успехе кладутся в HttpOnly cookie (zdc_tokens).
- */
 export async function GET(req: NextRequest) {
   const rl = rateLimit(`qr:status:${clientKeyFromRequest(req)}`, 60, 60_000);
   if (!rl.ok) {
@@ -112,10 +122,13 @@ export async function GET(req: NextRequest) {
   const acceptsSSE = req.headers.get("accept")?.includes("text/event-stream");
 
   if (!acceptsSSE) {
-    // Fallback: одноразовый poll для клиентов без SSE.
     const result = await pollDeviceToken(ctx);
     if (result.status === "confirmed") {
-      await persistTokens(ctx, result);
+      const ok = await recordApproval(ctx, result);
+      await clearDeviceCtx();
+      return new Response(JSON.stringify({ status: ok ? "confirmed" : "expired" }), {
+        headers: { "Content-Type": "application/json" },
+      });
     }
     return new Response(JSON.stringify({ status: result.status }), {
       headers: { "Content-Type": "application/json" },
@@ -134,7 +147,6 @@ export async function GET(req: NextRequest) {
             encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
           );
         } catch {
-          // controller already closed
         }
       };
 
@@ -160,8 +172,9 @@ export async function GET(req: NextRequest) {
         const result = await pollDeviceToken(currentCtx);
 
         if (result.status === "confirmed") {
-          await persistTokens(currentCtx, result);
-          send("status", { status: "confirmed" });
+          const ok = await recordApproval(currentCtx, result);
+          await clearDeviceCtx();
+          send("status", { status: ok ? "confirmed" : "expired" });
           controller.close();
           return;
         }
@@ -171,7 +184,6 @@ export async function GET(req: NextRequest) {
           controller.close();
           return;
         }
-        // pending — продолжаем
       }
     },
   });
