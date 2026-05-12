@@ -4,29 +4,45 @@
 import { redirect } from "next/navigation";
 
 // Импортируем ваши методы для работы с пользователями и сессиями
-import { createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod } from "@/services/zitadel/api";
+import { createSession, addIdpLinkToUser, completeAuthRequest, deleteSession, searchUserSessions, getAuthRequest, listAuthMethods, hasTotpMethod, getSession } from "@/services/zitadel/api";
 import { addSessionToCookie, getAllSessions, removeSessionFromCookie, setPreferredSessionId } from "@/services/zitadel/cookies";
 import { extractIdpIntent, setIdpIntentCookie, setTotpPendingCookie } from "../../_lib/reg-flow";
 import { env } from "@/shared/config/env";
 
-/**
- * Универсальный TOTP-гейт. Возвращает true — значит сессия ещё не подтвердила
- * TOTP-фактор, а у пользователя он включён. Вызывающий должен сделать
- * setTotpPendingCookie + redirect("/login/totp").
- *
- * Skip-условия:
- *  - userId неизвестен (до пользователя не дошли — гейт нечего проверять)
- *  - session.factors.totp присутствует (TOTP уже верифицирован в этой сессии,
- *    например после verifyTotpLoginAction → updateSession)
- */
-async function requiresTotpStep(
-  userId: string | undefined,
-  session: { factors?: { totp?: unknown } } | undefined,
-): Promise<boolean> {
-  if (!userId) return false;
-  if (session?.factors?.totp) return false;
-  const methods = await listAuthMethods(userId);
-  return methods.success && hasTotpMethod(methods.data.authMethodTypes);
+async function evaluateTotpGate(
+  sessionId: string,
+  sessionToken: string,
+  cachedSession: any,
+): Promise<{ required: boolean; userId: string | undefined; session: any }> {
+  // Если сессия уже есть - используем её
+  // Иначе подгружаем через getSession
+  let session = cachedSession && cachedSession.factors?.user?.id ? cachedSession : undefined;
+  if (!session) {
+    const res = await getSession(sessionId);
+    session = res.success ? res.data?.session : undefined;
+  }
+
+  const resolvedUserId: string | undefined = session?.factors?.user?.id;
+  if (!resolvedUserId) {
+    console.error("[auth:totp-gate] Не удалось определить userId из сессии sessionId=%s — gate пропущен", sessionId);
+    return { required: false, userId: undefined, session };
+  }
+
+  if (session?.factors?.totp) {
+    return { required: false, userId: resolvedUserId, session };
+  }
+
+  const methods = await listAuthMethods(resolvedUserId);
+  if (!methods.success) {
+    console.error("[auth:totp-gate] listAuthMethods упал для userId=%s — fail-closed, требуем TOTP", resolvedUserId);
+    return { required: true, userId: resolvedUserId, session };
+  }
+
+  return {
+    required: hasTotpMethod(methods.data.authMethodTypes),
+    userId: resolvedUserId,
+    session,
+  };
 }
 
 export async function completeAuthFlow(sessionId: string, sessionToken: string, requestId: string): Promise<string> {
@@ -64,12 +80,18 @@ export async function finishAuth(
   loginNameOverride?: string,
   userId?: string,
 ) {
-  const sessionDetails = sessionResData.session || {};
+  const gate = await evaluateTotpGate(
+    sessionResData.sessionId,
+    sessionResData.sessionToken,
+    sessionResData.session,
+  );
+
+  const sessionDetails = gate.session || sessionResData.session || {};
   const userFactors = sessionDetails.factors?.user || {};
-  const effectiveUserId = userId || userFactors.id;
+  const effectiveUserId = gate.userId || userId || userFactors.id;
   const loginName = loginNameOverride || userFactors.loginName || "unknown";
 
-  if (await requiresTotpStep(effectiveUserId, sessionDetails)) {
+  if (gate.required) {
     console.log("[auth:finishAuth] TOTP required: userId=%s, sessionId=%s",
       effectiveUserId, sessionResData.sessionId);
     await setTotpPendingCookie({
