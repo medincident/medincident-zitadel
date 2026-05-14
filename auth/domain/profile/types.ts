@@ -12,6 +12,10 @@ export interface PersonalInfo {
   isEmailVerified: boolean;
   position: string;
   avatarUrl?: string;
+  roles: string[];
+  organizationName?: string;
+  clinicName?: string;
+  departmentName?: string;
 }
 
 export interface LinkedAccountsStatus {

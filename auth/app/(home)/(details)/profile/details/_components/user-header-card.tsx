@@ -60,6 +60,23 @@ export const UserHeaderCard = memo(function UserHeaderCard({ user }: { user: Per
             <p className="text-sm text-muted-foreground font-medium">{user.position}</p>
           )}
 
+          {user.roles && user.roles.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5">
+              {user.roles.map((r, i) => (
+                <span
+                  key={r}
+                  className={
+                    i === 0
+                      ? "inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-semibold bg-primary text-primary-foreground"
+                      : "inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-semibold bg-primary/10 text-primary"
+                  }
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          )}
+
           <CopyButton
             text={user.id}
             className="flex items-center gap-1.5 font-mono text-xs rounded-md px-1.5 py-0.5 -ml-1.5 text-muted-foreground/60 hover:text-muted-foreground hover:bg-primary/10 transition-all duration-150 active:scale-95 cursor-pointer"

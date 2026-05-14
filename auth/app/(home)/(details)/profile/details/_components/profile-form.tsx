@@ -26,6 +26,11 @@ interface ProfileFormProps {
   isSaving: boolean;
   message: FormMessage | null;
   isEmailVerified?: boolean;
+  organizationName?: string;
+  clinicName?: string;
+  departmentName?: string;
+  position?: string;
+  roles?: string[];
   onSubmit: (e: React.SyntheticEvent) => void;
   onCancel: () => void;
 }
@@ -84,7 +89,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
-      <Input value={value} disabled className="bg-muted/50 text-muted-foreground" />
+      <Input value={value} readOnly className="bg-card" />
     </div>
   );
 }
@@ -122,6 +127,11 @@ export function ProfileForm({
   isSaving,
   message,
   isEmailVerified = false,
+  organizationName,
+  clinicName,
+  departmentName,
+  position,
+  roles,
   onSubmit,
   onCancel,
 }: ProfileFormProps) {
@@ -194,12 +204,28 @@ export function ProfileForm({
 
       {/* ── РАБОЧИЕ ДАННЫЕ ─── */}
       <div className={SECTION_CLASS}>
-        <SectionLabel icon={Briefcase} label="Рабочие данные" />
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 select-none mb-3">
+          <div className="flex items-center gap-2">
+            <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+              Рабочие данные
+            </span>
+          </div>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium bg-muted text-muted-foreground">
+            Неизменяемо
+          </span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ReadOnlyField label="Организация" value="ГБУЗ «СМП Москвы»" />
-          <ReadOnlyField label="Отделение" value="Бригада экстренной помощи" />
-          <ReadOnlyField label="Должность" value="Врач скорой помощи" />
-          <ReadOnlyField label="Специализация" value="Кардиология" />
+          <ReadOnlyField label="Организация" value={organizationName || "Не указана"} />
+          <ReadOnlyField label="Клиника" value={clinicName || "Не указана"} />
+          <ReadOnlyField label="Отделение" value={departmentName || "Не указано"} />
+          <ReadOnlyField label="Должность" value={position || "Сотрудник"} />
+        </div>
+        <div className="space-y-1 pt-1">
+          <Label className="text-xs font-medium text-muted-foreground">Роли</Label>
+          <p className="text-sm text-foreground leading-snug break-words">
+            {roles && roles.length > 0 ? roles.join(", ") : "—"}
+          </p>
         </div>
       </div>
 

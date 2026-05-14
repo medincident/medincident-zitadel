@@ -5,14 +5,36 @@ import { ProfileFormData } from "./profile.hooks";
 
 import { updateHumanEmail, updateUserMiddleName, getUserMiddleName } from "@/services/zitadel/api";
 import { getMe, updateMyProfile, uploadMyAvatar } from "@/services/zitadel/user/requests/profile";
+import {
+  getMyIdentity,
+  getMyOrgRole,
+  getMyEmployment,
+  listMyOrganizations,
+} from "@/services/backend/requests/roles";
 import { revalidatePath } from "next/cache";
+
+function buildRoles(opts: {
+  isSystemAdmin: boolean;
+  isOrgHead: boolean;
+  isOrgAdmin: boolean;
+  isOrgDispatcher: boolean;
+}): string[] {
+  const roles: string[] = [];
+  if (opts.isSystemAdmin) roles.push("Системный администратор");
+  if (opts.isOrgHead) roles.push("Главврач");
+  if (opts.isOrgAdmin) roles.push("Администратор");
+  if (opts.isOrgDispatcher) roles.push("Диспетчер");
+  return roles;
+}
 
 export async function getProfileDataAction() {
   const { userId } = await requireValidSession();
 
-  const [userResult, middleName] = await Promise.all([
+  const [userResult, middleName, identityRes, orgsRes] = await Promise.all([
     getMe(userId),
     getUserMiddleName(userId),
+    getMyIdentity(),
+    listMyOrganizations(),
   ]);
 
   if (!userResult.success) {
@@ -20,6 +42,24 @@ export async function getProfileDataAction() {
   }
 
   const human = userResult.data.user?.human;
+  const isSystemAdmin = identityRes.success ? !!identityRes.data.isSystemAdmin : false;
+  const orgId = orgsRes.success
+    ? (orgsRes.data.items ?? []).map((o) => o.id).find((id): id is string => !!id)
+    : undefined;
+
+  const [orgRoleRes, employmentRes] = orgId
+    ? await Promise.all([getMyOrgRole(orgId), getMyEmployment(orgId)])
+    : [undefined, undefined];
+
+  const role = orgRoleRes?.success ? orgRoleRes.data : undefined;
+  const employee = employmentRes?.success ? employmentRes.data.employee : undefined;
+
+  const roles = buildRoles({
+    isSystemAdmin,
+    isOrgHead: !!role?.isOrgHead,
+    isOrgAdmin: !!role?.isOrgAdmin,
+    isOrgDispatcher: !!role?.isOrgDispatcher,
+  });
 
   return {
     id: userId,
@@ -28,8 +68,12 @@ export async function getProfileDataAction() {
     middleName: middleName,
     email: human?.email?.email || "",
     isEmailVerified: human?.email?.isVerified || false,
-    position: "Врач скорой помощи",
+    position: employee?.position || roles[0] || "Сотрудник",
     avatarUrl: human?.profile?.avatarUrl || "",
+    roles,
+    organizationName: employee?.organizationName,
+    clinicName: employee?.clinicName,
+    departmentName: employee?.departmentName,
   };
 }
 

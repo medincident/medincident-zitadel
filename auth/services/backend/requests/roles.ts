@@ -2,9 +2,11 @@
 
 import { cache } from "react";
 import {
+  selfQueryServiceGetMyEmployment,
   selfQueryServiceGetMyIdentity,
   selfQueryServiceGetMyOrganizationRole,
   selfQueryServiceListMyOrganizations,
+  type V1GetMyEmploymentResponse,
   type V1GetMyIdentityResponse,
   type V1GetMyOrganizationRoleResponse,
   type V1ListMyOrganizationsResponse,
@@ -65,6 +67,30 @@ export const getMyOrgRole = cache(
       console.warn(
         "[roles] getMyOrgRole orgId=%s error type=%s code=%s message=%s details=%o",
         orgId, res.error.type, res.error.code, res.error.message, res.error.details,
+      );
+    }
+    return res;
+  },
+);
+
+export const getMyEmployment = cache(
+  async (orgId: string): Promise<Result<V1GetMyEmploymentResponse>> => {
+    const res = await handleBackendRequest<V1GetMyEmploymentResponse>(
+      () => selfQueryServiceGetMyEmployment({
+        path: { organizationId: orgId },
+        throwOnError: true,
+      }),
+    );
+    if (res.success) {
+      const e = res.data.employee;
+      console.log(
+        "[roles] getMyEmployment orgId=%s ok position=%s clinic=%s department=%s",
+        orgId, e?.position, e?.clinicName, e?.departmentName,
+      );
+    } else {
+      console.warn(
+        "[roles] getMyEmployment orgId=%s error type=%s code=%s message=%s",
+        orgId, res.error.type, res.error.code, res.error.message,
       );
     }
     return res;

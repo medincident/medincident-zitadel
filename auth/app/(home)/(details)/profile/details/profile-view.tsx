@@ -107,6 +107,11 @@ export function ProfileDetailsView() {
       isSaving={state.isSaving}
       message={state.message}
       isEmailVerified={state.isEmailVerified}
+      organizationName={user.organizationName}
+      clinicName={user.clinicName}
+      departmentName={user.departmentName}
+      position={user.position}
+      roles={user.roles}
       onSubmit={actions.onSubmit}
       onCancel={actions.onCancel}
     />
