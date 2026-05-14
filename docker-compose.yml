@@ -113,6 +113,7 @@ services:
       - zitadel-bootstrap:/zitadel/bootstrap:rw
     networks:
       - zitadel
+      - medincident-zitadel-actions
     depends_on:
       postgres:
         condition: service_healthy
@@ -259,7 +260,7 @@ services:
   # Watchtower следит за обновлением тега :latest и перезапускает контейнер.
   custom-ui:
     profiles: [ prod ]
-    image: ${CUSTOM_UI_IMAGE}
+    # image: ${CUSTOM_UI_IMAGE}
     pull_policy: always
     restart: unless-stopped
     build:
@@ -376,6 +377,8 @@ services:
 networks:
   zitadel:
     name: zitadel
+  medincident-zitadel-actions:
+    external: true
 
 volumes:
   postgres-data:

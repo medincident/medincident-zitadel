@@ -31,7 +31,7 @@ export async function AdminMenuButton({ variant = "sidebar" }: AdminMenuButtonPr
       asChild
       className="group w-full justify-start gap-3 px-3 py-3 h-auto text-muted-foreground rounded-xl font-medium hover:bg-muted hover:text-primary"
     >
-      <a href="/admin" target="_blank" rel="noopener noreferrer">
+      <a href="/ui/console" target="_blank" rel="noopener noreferrer">
         <Settings className="size-5 text-muted-foreground/70 group-hover:text-primary transition-colors" />
         <span className="flex-1 text-left">Админизация</span>
         <ExternalLink className="size-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
