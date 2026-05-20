@@ -212,7 +212,7 @@ export function ProfileForm({
             </span>
           </div>
           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium bg-muted text-muted-foreground">
-            Неизменяемо
+            только чтение
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -3,6 +3,7 @@ import { AppLogoIcon } from "@/app/_components/icons";
 import { RegisterView } from "./_components/register-view";
 import { continueRegisterIdp, continueRegisterEmail } from "./register-actions";
 import { getIdpIntentCookie } from "../_lib/reg-flow";
+import { BackLink } from "../_components/back-link";
 
 export default async function RegisterPage({
   searchParams,
@@ -10,6 +11,10 @@ export default async function RegisterPage({
   searchParams: Promise<{ source?: string; requestId?: string }>;
 }) {
   const { source, requestId } = await searchParams;
+
+  const backHref = source === "email"
+    ? (requestId ? `/login/email?requestId=${requestId}` : "/login/email")
+    : (requestId ? `/login?requestId=${requestId}` : "/login");
 
   // Для IDP-пути читаем intent из cookie
   if (source === "idp") {
@@ -33,6 +38,7 @@ export default async function RegisterPage({
       <div className="h-dvh overflow-y-auto bg-background font-sans">
         <div className="min-h-full flex items-center justify-center px-4 py-6 sm:py-8">
           <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+            <BackLink href={backHref} />
             <h1 className="mb-6 sm:mb-8 flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold tracking-tight text-foreground">
               <AppLogoIcon className="size-5 md:size-6 text-primary shrink-0" />
               Регистрация
@@ -51,6 +57,7 @@ export default async function RegisterPage({
     <div className="h-dvh overflow-y-auto bg-background font-sans">
       <div className="min-h-full flex items-center justify-center px-4 py-6 sm:py-8">
         <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
+          <BackLink href={backHref} />
           <h1 className="mb-6 sm:mb-8 flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold tracking-tight text-foreground">
             <AppLogoIcon className="size-5 md:size-6 text-primary shrink-0" />
             Регистрация
