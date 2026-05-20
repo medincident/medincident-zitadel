@@ -15,14 +15,16 @@ import {
   DialogTrigger,
 } from "@/shared/ui/dialog";
 import { logoutClient } from "@/app/(home)/(auth)/login/login.hooks";
+import { startZitadelSignIn } from "@/services/zitadel/user/sign-in";
 
-export function LogoutConfirmDialog({ children }: { children: React.ReactNode }) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+export function SwitchAccountConfirmDialog({ children }: { children: React.ReactNode }) {
+  const [isSwitching, setIsSwitching] = useState(false);
   const [clearEverywhere, setClearEverywhere] = useState(false);
 
-  const handleLogout = useCallback(async () => {
-    setIsLoggingOut(true);
-    await logoutClient({ clearZitadelSession: clearEverywhere });
+  const handleSwitch = useCallback(async () => {
+    setIsSwitching(true);
+    await logoutClient({ clearZitadelSession: clearEverywhere, skipRedirect: true });
+    await startZitadelSignIn("select_account");
   }, [clearEverywhere]);
 
   return (
@@ -32,9 +34,9 @@ export function LogoutConfirmDialog({ children }: { children: React.ReactNode })
       </DialogTrigger>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Выход из системы</DialogTitle>
+          <DialogTitle>Сменить аккаунт</DialogTitle>
           <DialogDescription className="pt-2">
-            Вы уверены, что хотите завершить текущую сессию на этом устройстве?
+            Текущая сессия будет завершена, и вы сможете войти под другим аккаунтом.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-3 rounded-lg section-surface p-3">
@@ -42,7 +44,7 @@ export function LogoutConfirmDialog({ children }: { children: React.ReactNode })
             name="clearEverywhere"
             checked={clearEverywhere}
             onCheckedChange={setClearEverywhere}
-            disabled={isLoggingOut}
+            disabled={isSwitching}
             align="center"
           >
             <span className="text-sm font-medium text-foreground">Завершить сессию</span>
@@ -50,15 +52,14 @@ export function LogoutConfirmDialog({ children }: { children: React.ReactNode })
         </div>
         <DialogFooter className="gap-2 sm:gap-0 mt-4">
           <DialogClose asChild>
-            <Button variant="outline" disabled={isLoggingOut}>Отмена</Button>
+            <Button variant="outline" disabled={isSwitching}>Отмена</Button>
           </DialogClose>
           <Button
-            variant="destructive"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
+            onClick={handleSwitch}
+            disabled={isSwitching}
           >
-            {isLoggingOut && <Loader2 className="mr-2 animate-spin" />}
-            Выйти
+            {isSwitching && <Loader2 className="mr-2 animate-spin" />}
+            Сменить
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,6 +14,7 @@ interface CheckboxProps {
   invalid?: boolean;
   id?: string;
   className?: string;
+  align?: "start" | "center";
   children?: React.ReactNode;
 }
 
@@ -27,6 +28,7 @@ export function Checkbox({
   invalid,
   id,
   className,
+  align = "start",
   children,
 }: CheckboxProps) {
   const generatedId = useId();
@@ -39,7 +41,8 @@ export function Checkbox({
     <label
       htmlFor={inputId}
       className={cn(
-        "flex cursor-pointer items-start gap-3 select-none",
+        "flex cursor-pointer gap-3 select-none",
+        align === "center" ? "items-center" : "items-start",
         disabled && "cursor-not-allowed opacity-60",
         className
       )}
@@ -61,12 +64,13 @@ export function Checkbox({
       <span
         aria-hidden="true"
         className={cn(
-          "mt-0.5 size-5 shrink-0 rounded-md border-2 transition-colors",
+          "size-5 shrink-0 rounded-md border-2 transition-colors",
+          align === "start" && "mt-0.5",
           "flex items-center justify-center",
           "peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-card",
           checked
             ? "bg-primary border-primary"
-            : "bg-transparent border-input hover:border-primary/50",
+            : "bg-card border-input hover:border-primary/50",
           invalid && !checked && "border-destructive"
         )}
       >

@@ -11,7 +11,7 @@ import { VerifyForm } from "./_components/verify-form";
 import { verifyEmailAction } from "./actions";
 import { resendEmailVerification, getUserById } from "@/services/zitadel/api";
 import { getUserIdFromNextAuth } from "@/services/zitadel/session";
-import { signOut } from "@/services/zitadel/user/auth";
+import { logoutAction } from "../../actions";
 
 export default async function VerifyPage({
   searchParams,
@@ -57,7 +57,7 @@ export default async function VerifyPage({
     await deleteRegFlowCookie();
     await deleteIdpIntentCookie();
     await deletePasswordResetCookie();
-    await signOut({ redirectTo: "/login" });
+    await logoutAction();
   }
 
   return (

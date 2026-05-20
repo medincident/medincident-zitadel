@@ -6,7 +6,7 @@ import { EditableAvatar } from "./editable-avatar";
 import { Check, UserRoundCog } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { CopyButton } from "@/shared/ui/copy-button";
-import { startZitadelSignIn } from "@/services/zitadel/user/sign-in";
+import { SwitchAccountConfirmDialog } from "../../_components/switch-account-confirm-dialog";
 
 interface CopyContentProps {
   copied: boolean;
@@ -21,8 +21,6 @@ const CopyContent = memo(function CopyContent({ copied, id }: CopyContentProps) 
     </>
   );
 });
-
-const handleSwitchAccount = () => startZitadelSignIn("select_account");
 
 export const UserHeaderCard = memo(function UserHeaderCard({ user }: { user: PersonalInfo }) {
   const initials = useMemo(
@@ -85,17 +83,18 @@ export const UserHeaderCard = memo(function UserHeaderCard({ user }: { user: Per
           </CopyButton>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSwitchAccount}
-          aria-label="Сменить аккаунт"
-          title="Сменить аккаунт"
-          className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 sm:gap-2"
-        >
-          <UserRoundCog />
-          <span className="hidden sm:inline">Сменить аккаунт</span>
-        </Button>
+        <SwitchAccountConfirmDialog>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Сменить аккаунт"
+            title="Сменить аккаунт"
+            className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 sm:gap-2"
+          >
+            <UserRoundCog />
+            <span className="hidden sm:inline">Сменить аккаунт</span>
+          </Button>
+        </SwitchAccountConfirmDialog>
       </div>
     </div>
   );

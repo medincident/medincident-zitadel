@@ -102,7 +102,7 @@ export function useQrStatus(enabled: boolean) {
   return { status: enabled ? status : "pending" };
 }
 
-export async function logoutClient() {
+export async function logoutClient(options?: { clearZitadelSession?: boolean; skipRedirect?: boolean }) {
   useProfileStore.getState().clearProfile();
-  await logoutAction();
+  await logoutAction(options);
 }

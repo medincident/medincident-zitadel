@@ -109,55 +109,61 @@ export async function applyDeviceFlowAction(userCode: string) {
   });
 }
 
-export async function logoutAction() {
-  console.log("[auth:logout] Начинаем выход...");
+export interface LogoutOptions {
+  clearZitadelSession?: boolean;
+  skipRedirect?: boolean;
+}
+
+export async function logoutAction(options: LogoutOptions = {}) {
+  const { clearZitadelSession = false, skipRedirect = false } = options;
+  console.log("[auth:logout] Начинаем выход: clearZitadelSession=%s, skipRedirect=%s", clearZitadelSession, skipRedirect);
 
   const knownSessions = await getAllSessions();
-
-  // 1. Определяем сессию для выхода через NextAuth → userId → searchUserSessions
   const userId = await getUserIdFromNextAuth();
   let targetSession = null as (typeof knownSessions)[number] | null;
-
   if (userId) {
     const res = await searchUserSessions(userId);
     const zitadelIds = new Set(
       (res.success ? res.data?.sessions || [] : []).map((s: any) => s.id)
     );
-    targetSession = knownSessions.find(s => zitadelIds.has(s.id)) ?? null;
+    targetSession = knownSessions.find((s) => zitadelIds.has(s.id)) ?? null;
   }
 
-  if (!targetSession && knownSessions.length > 0) {
-    console.log("[auth:logout] Fallback: userId не найден, удаляем все %d сессий из куки", knownSessions.length);
-    for (const s of knownSessions) {
-      try {
-        await deleteSession(s.id, s.token);
-        console.log("[auth:logout] Сессия удалена в Zitadel: sessionId=%s", s.id);
-      } catch (e) {
-        console.error("[auth:logout] Ошибка при удалении сессии %s:", s.id, e);
+  if (clearZitadelSession) {
+    if (!targetSession && knownSessions.length > 0) {
+      console.log("[auth:logout] Fallback: userId не найден, удаляем все %d сессий из куки", knownSessions.length);
+      for (const s of knownSessions) {
+        try {
+          await deleteSession(s.id, s.token);
+          console.log("[auth:logout] Сессия удалена в Zitadel: sessionId=%s", s.id);
+        } catch (e) {
+          console.error("[auth:logout] Ошибка при удалении сессии %s:", s.id, e);
+        }
+        await removeSessionFromCookie(s.id);
       }
-      await removeSessionFromCookie(s.id);
+    } else if (targetSession) {
+      try {
+        await deleteSession(targetSession.id, targetSession.token);
+        console.log("[auth:logout] Сессия удалена в Zitadel: sessionId=%s", targetSession.id);
+      } catch (e) {
+        console.error("[auth:logout] Ошибка при удалении сессии в Zitadel:", e);
+      }
+      await removeSessionFromCookie(targetSession.id);
+    } else {
+      console.log("[auth:logout] Нет сессий для удаления");
     }
-  } else if (targetSession) {
-    // 2. Удаляем конкретную сессию в Zitadel
-    try {
-      await deleteSession(targetSession.id, targetSession.token);
-      console.log("[auth:logout] Сессия удалена в Zitadel: sessionId=%s", targetSession.id);
-    } catch (e) {
-      console.error("[auth:logout] Ошибка при удалении сессии в Zitadel:", e);
-    }
-    // 3. Удаляем сессию из куки
-    await removeSessionFromCookie(targetSession.id);
-  } else {
-    console.log("[auth:logout] Нет сессий для удаления");
   }
 
-  // 4. Сносим NextAuth-куки локально (без редиректа — он будет ниже).
   await signOut({ redirect: false });
 
-  // 5. RP-Initiated Logout: уводим пользователя через /oidc/v1/end_session,
-  //    чтобы Zitadel завершил OIDC-сессию на IdP. post_logout_redirect_uri
-  //    должен побайтово совпадать с Post Logout URIs в Zitadel-приложении.
-  //    Spec: https://openid.net/specs/openid-connect-rpinitiated-1_0.html
+  if (skipRedirect) {
+    return;
+  }
+
+  // RP-Initiated Logout: уводим пользователя через /oidc/v1/end_session,
+  //   чтобы Zitadel завершил OIDC-сессию на IdP. post_logout_redirect_uri
+  //   должен побайтово совпадать с Post Logout URIs в Zitadel-приложении.
+  //   Spec: https://openid.net/specs/openid-connect-rpinitiated-1_0.html
   const params = new URLSearchParams({
     client_id: env.APP_CLIENT_ID,
     post_logout_redirect_uri: `${env.APP_URL}/logout`,
